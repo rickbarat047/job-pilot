@@ -1,0 +1,44 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/data/jobpilot.db
+      - STORAGE_DIR=/storage
+      - APP_URL=http://localhost:3000
+      - CRON_SECRET=${CRON_SECRET}
+      - WORKER_TOKEN=${WORKER_TOKEN}
+      - APP_ENCRYPTION_KEY=${APP_ENCRYPTION_KEY}
+      - DEMO_MODE=${DEMO_MODE:-true}
+    volumes:
+      - jobpilot_data:/data
+      - jobpilot_storage:/storage
+
+  scheduler:
+    build: .
+    command: ["node", "scripts/scheduler.mjs"]
+    environment:
+      - APP_URL=http://app:3000
+      - CRON_SECRET=${CRON_SECRET}
+    depends_on:
+      - app
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_URL=http://app:3000
+      - WORKER_TOKEN=${WORKER_TOKEN}
+      - PORT=8000
+    depends_on:
+      - app
+
+volumes:
+  jobpilot_data:
+  jobpilot_storage:

@@ -1,0 +1,59 @@
+{
+  "name": "jobpilot-ai",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "description": "JobPilot AI — autonomous AI job hunting and application platform for India",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:seed": "curl -s -X POST http://localhost:3000/api/dev/seed",
+    "worker": "node scripts/scheduler.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@napi-rs/canvas": "^1.1.0",
+    "@sentry/nextjs": "^11.10.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "@types/pg": "^8.23.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "docx": "^9.5.1",
+    "framer-motion": "^14.9.0",
+    "lucide-react": "^0.552.0",
+    "mammoth": "^1.11.0",
+    "next": "^16.4.3",
+    "next-themes": "^0.4.6",
+    "nodemailer": "^7.0.10",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-hook-form": "^7.66.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1",
+    "tesseract.js": "^7.0.0",
+    "unpdf": "^1.4.0",
+    "word-extractor": "^1.0.4",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.10.0",
+    "@types/nodemailer": "^7.0.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

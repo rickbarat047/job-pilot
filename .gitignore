@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# local data (never commit candidate data)
+data/
+storage/
+users/
+*.db
+*.traineddata
+eng.traineddata
+*.db-journal
+*.db-wal
+*.db-shm
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+worker/.venv/
+
+# test / coverage
+coverage/
+
+.vercel

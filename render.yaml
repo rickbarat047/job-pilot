@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: jobpilot-worker
+    runtime: docker
+    rootDir: worker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: WORKER_TOKEN
+        sync: false
+      - key: ENABLE_POLLER
+        value: "true"
+      - key: POLL_INTERVAL_SECONDS
+        value: "15"
+      - key: HEADLESS
+        value: "true"
+      - key: DRY_RUN
+        value: "false"
+      - key: SCREENSHOT_DIR
+        value: "/tmp/jobpilot-screenshots"
