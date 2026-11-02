@@ -361,6 +361,53 @@ export const TRANSFERABLE: Record<string, string[]> = {
   "Node.js": ["Software Engineering & QA"],
 };
 
+/** Degree-to-skills mapping: suggests relevant skills when a user enters their degree.
+ * These are commonly associated skills, not guarantees - user always chooses what to add. */
+export const DEGREE_SKILLS: Record<string, string[]> = {
+  "bachelor of technology": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
+  "bachelor of engineering": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
+  "b.tech": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
+  "b.e": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
+  "mechanical engineering": ["CAD", "SolidWorks", "AutoCAD", "Manufacturing", "Production Planning", "Quality Control", "GD&T", "Problem Solving"],
+  "computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Problem Solving"],
+  "computer science engineering": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Problem Solving"],
+  "information technology": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "Technical Support", "Problem Solving"],
+  "electronics": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "Problem Solving"],
+  "electronics and communication": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "Networking", "Problem Solving"],
+  "electrical": ["PLC", "SCADA", "Power Systems", "Electrical Design", "Maintenance", "Problem Solving"],
+  "civil engineering": ["AutoCAD", "STAAD", "Revit", "Construction Management", "Project Management", "Quality Control", "Problem Solving"],
+  "bachelor of commerce": ["Accounting", "Excel", "Tally", "Financial Analysis", "Banking Operations", "MIS Reporting", "Business Analysis"],
+  "b.com": ["Accounting", "Excel", "Tally", "Financial Analysis", "Banking Operations", "MIS Reporting", "Business Analysis"],
+  "bachelor of business administration": ["Business Analysis", "Project Management", "Operations", "Communication", "Excel", "CRM", "Marketing"],
+  "bba": ["Business Analysis", "Project Management", "Operations", "Communication", "Excel", "CRM", "Marketing"],
+  "master of business administration": ["Project Management", "Business Analysis", "Operations", "Strategic Planning", "Leadership", "Financial Analysis", "Negotiation"],
+  "mba": ["Project Management", "Business Analysis", "Operations", "Strategic Planning", "Leadership", "Financial Analysis", "Negotiation"],
+  "bachelor of science": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication"],
+  "b.sc": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication"],
+  "bachelor of arts": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving"],
+  "b.a": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving"],
+  "bachelor of computer applications": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "Problem Solving"],
+  "bca": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "Problem Solving"],
+  "master of computer applications": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Project Management", "Problem Solving"],
+  "mca": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Project Management", "Problem Solving"],
+  "diploma in mechanical engineering": ["CAD", "AutoCAD", "Manufacturing", "Production Planning", "Quality Control", "Maintenance", "Problem Solving"],
+  "diploma in computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "Technical Support", "Networking", "Problem Solving"],
+  "diploma in electrical engineering": ["PLC", "Electrical Design", "Maintenance", "Power Systems", "Problem Solving"],
+  "diploma in civil engineering": ["AutoCAD", "Construction Management", "Quality Control", "Project Management", "Problem Solving"],
+};
+
+export function getDegreeSkills(degree: string): string[] {
+  if (!degree) return [];
+  const key = degree.trim().toLowerCase();
+  // Exact match first
+  if (DEGREE_SKILLS[key]) return DEGREE_SKILLS[key];
+  // Partial match: check if any key is contained in the degree string
+  for (const [degreeKey, skills] of Object.entries(DEGREE_SKILLS)) {
+    if (key.includes(degreeKey)) return skills;
+  }
+  return [];
+}
+
 /** Preferred-role keyword map used by career discovery. */
 export const CAREER_PATH_KEYWORDS: Record<string, string[]> = {
   "Automotive & EV Engineering": ["automobile", "automotive", "ev", "vehicle", "powertrain", "battery", "engine", "homologation"],

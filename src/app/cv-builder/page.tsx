@@ -1,12 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/form-controls";
 import { Textarea } from "@/components/ui/form-controls";
 import { Label } from "@/components/ui/form-controls";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Plus, X } from "lucide-react";
+import { getDegreeSkills } from "@/lib/taxonomy";
 export default function CvBuilderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -20,6 +21,23 @@ export default function CvBuilderPage() {
   const [targetRole, setTargetRole] = useState("Software Engineer");
   const [assisting, setAssisting] = useState(false);
   const [generated, setGenerated] = useState<{ pdfPath: string; docxPath: string } | null>(null);
+
+  const degreeSkills = useMemo(() => getDegreeSkills(String(profile.degree ?? "")), [profile.degree]);
+
+  const addDegreeSkill = useCallback((skill: string) => {
+    setProfile((current) => {
+      const existing = Array.isArray(current.skills) ? current.skills.map((s: { name: string }) => s.name) : [];
+      if (existing.includes(skill)) return current;
+      return { ...current, skills: [...existing, skill].map((name) => ({ name })) };
+    });
+  }, []);
+
+  const removeSkill = useCallback((skillName: string) => {
+    setProfile((current) => {
+      const existing = Array.isArray(current.skills) ? current.skills.map((s: { name: string }) => s.name) : [];
+      return { ...current, skills: existing.filter((n) => n !== skillName).map((name) => ({ name })) };
+    });
+  }, []);
 
   async function assist() {
     setAssisting(true);
@@ -105,6 +123,34 @@ export default function CvBuilderPage() {
         <CardHeader><CardTitle>Skills and summary</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div><Label>Skills (comma separated)</Label><Input value={Array.isArray(profile.skills) ? profile.skills.map((s: { name: string }) => s.name).join(", ") : ""} onChange={(e) => update("skills", e.target.value.split(",").map((s) => ({ name: s.trim() })).filter((s) => s.name))} /></div>
+          {degreeSkills.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Suggested skills for your degree ({String(profile.degree)})</Label>
+              <div className="flex flex-wrap gap-2">
+                {degreeSkills.map((skill) => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => addDegreeSkill(skill)}
+                    className="px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-xs text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Click a skill to add it to your profile.</p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {(Array.isArray(profile.skills) ? profile.skills : []).map((s: { name: string }) => (
+              <span key={s.name} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-xs">
+                {s.name}
+                <button type="button" onClick={() => removeSkill(s.name)} className="ml-1 hover:text-destructive">
+                  <X size={10} strokeWidth={2} />
+                </button>
+              </span>
+            ))}
+          </div>
           <div><Label>Languages (comma separated)</Label><Input value={Array.isArray(profile.languages) ? profile.languages.join(", ") : ""} onChange={(e) => update("languages", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} /></div>
           <div><Label>Professional summary</Label><Textarea value={String(profile.summary ?? "")} onChange={(e) => update("summary", e.target.value)} /></div>
           <Button type="button" variant="outline" onClick={assist} disabled={assisting}>{assisting ? "Generating assistance…" : "AI write summary and suggest skills"}</Button>
