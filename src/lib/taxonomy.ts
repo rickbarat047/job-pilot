@@ -1,4 +1,4 @@
-import type { CandidateProfile, CandidatePreferences, JobMatchResult, NormalizedJob } from "./types";
+import { CandidateProfile, CandidatePreferences } from "@/lib/types";
 
 export interface SkillDefinition {
   name: string;
@@ -6,11 +6,494 @@ export interface SkillDefinition {
   aliases: string[];
 }
 
-/**
- * Curated skill taxonomy. Aliases are matched case-insensitively on word
- * boundaries. Keep short/ambiguous tokens out of aliases to avoid false hits.
- */
-export const SKILLS: SkillDefinition[] = [
+export const DEGREE_SKILLS: Record<string, string[]> = {
+  // Engineering - Core
+  "bachelor of technology": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management", "Python", "Java", "SQL", "Data Analysis", "Git", "REST APIs"],
+  "bachelor of engineering": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management", "Python", "Java", "SQL", "Data Analysis", "Git", "REST APIs"],
+  "b.tech": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management", "Python", "Java", "SQL", "Data Analysis", "Git", "REST APIs"],
+  "b.e": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management", "Python", "Java", "SQL", "Data Analysis", "Git", "REST APIs"],
+  "mechanical engineering": ["CAD", "SolidWorks", "AutoCAD", "CATIA", "Creo", "NX", "GD&T", "FEA", "CFD", "Manufacturing", "Production Planning", "Quality Control", "Maintenance", "ANSYS", "MATLAB", "Problem Solving", "Project Management"],
+  "computer science": ["Python", "Java", "JavaScript", "TypeScript", "React", "Node.js", "SQL", "MongoDB", "Git", "REST APIs", "AWS", "Docker", "Data Analysis", "Machine Learning", "Problem Solving", "HTML", "CSS"],
+  "computer science engineering": ["Python", "Java", "JavaScript", "TypeScript", "React", "Node.js", "SQL", "MongoDB", "Git", "REST APIs", "AWS", "Docker", "Data Analysis", "Machine Learning", "Problem Solving", "HTML", "CSS"],
+  "information technology": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "Technical Support", "System Administration", "Linux", "AWS", "Docker", "Cybersecurity", "Problem Solving"],
+  "electronics": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "PCB Design", "Soldering", "Multimeter", "Oscilloscope", "Problem Solving"],
+  "electronics and communication": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "Networking", "5G", "Signal Processing", "Problem Solving"],
+  "electrical": ["PLC", "SCADA", "Power Systems", "Electrical Design", "Maintenance", "AutoCAD Electrical", "ETAP", "MATLAB", "Problem Solving", "Project Management"],
+  "civil engineering": ["AutoCAD", "STAAD", "Revit", "Construction Management", "Project Management", "Quality Control", "Site Supervision", "Quantity Surveying", "Structural Analysis", "Problem Solving"],
+  "bachelor of civil engineering": ["AutoCAD", "STAAD", "Revit", "Construction Management", "Project Management", "Quality Control", "Site Supervision", "Quantity Surveying", "Structural Analysis", "Problem Solving"],
+  "b.tech civil": ["AutoCAD", "STAAD", "Revit", "Construction Management", "Project Management", "Quality Control", "Site Supervision", "Quantity Surveying", "Structural Analysis", "Problem Solving"],
+  "electrical engineering": ["PLC", "SCADA", "Power Systems", "Electrical Design", "Maintenance", "AutoCAD Electrical", "ETAP", "MATLAB", "Problem Solving", "Project Management"],
+  "bachelor of electrical engineering": ["PLC", "SCADA", "Power Systems", "Electrical Design", "Maintenance", "AutoCAD Electrical", "ETAP", "MATLAB", "Problem Solving", "Project Management"],
+  "b.tech electrical": ["PLC", "SCADA", "Power Systems", "Electrical Design", "Maintenance", "AutoCAD Electrical", "ETAP", "MATLAB", "Problem Solving", "Project Management"],
+  "electronics engineering": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "PCB Design", "VLSI", "Signal Processing", "Problem Solving"],
+  "bachelor of electronics engineering": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "PCB Design", "VLSI", "Signal Processing", "Problem Solving"],
+  "b.tech electronics": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "PCB Design", "VLSI", "Signal Processing", "Problem Solving"],
+  "electronics and communication engineering": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "Networking", "5G", "Signal Processing", "VLSI", "Communication Systems", "Problem Solving"],
+  "bachelor of electronics and communication engineering": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "Networking", "5G", "Signal Processing", "VLSI", "Communication Systems", "Problem Solving"],
+  "b.tech ece": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "Networking", "5G", "Signal Processing", "VLSI", "Communication Systems", "Problem Solving"],
+  "ece": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "SCADA", "Networking", "5G", "Signal Processing", "VLSI", "Communication Systems", "Problem Solving"],
+  "chemical engineering": ["Chemical Process Design", "Process Simulation", "Aspen HYSYS", "Chemical Engineering", "Plant Design", "Safety Engineering", "Quality Control", "Problem Solving", "Project Management"],
+  "bachelor of chemical engineering": ["Chemical Process Design", "Process Simulation", "Aspen HYSYS", "Chemical Engineering", "Plant Design", "Safety Engineering", "Quality Control", "Problem Solving", "Project Management"],
+  "b.tech chemical": ["Chemical Process Design", "Process Simulation", "Aspen HYSYS", "Chemical Engineering", "Plant Design", "Safety Engineering", "Quality Control", "Problem Solving", "Project Management"],
+  "aeronautical engineering": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Problem Solving", "Project Management"],
+  "bachelor of aeronautical engineering": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Problem Solving", "Project Management"],
+  "b.tech aeronautical": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Problem Solving", "Project Management"],
+  "aerospace engineering": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Orbital Mechanics", "Problem Solving", "Project Management"],
+  "bachelor of aerospace engineering": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Orbital Mechanics", "Problem Solving", "Project Management"],
+  "b.tech aerospace": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Orbital Mechanics", "Problem Solving", "Project Management"],
+  "marine engineering": ["Marine Engineering", "Naval Architecture", "Ship Design", "Marine Propulsion", "Maintenance", "Welding", "Problem Solving", "Project Management"],
+  "bachelor of marine engineering": ["Marine Engineering", "Naval Architecture", "Ship Design", "Marine Propulsion", "Maintenance", "Welding", "Problem Solving", "Project Management"],
+  "b.tech marine": ["Marine Engineering", "Naval Architecture", "Ship Design", "Marine Propulsion", "Maintenance", "Welding", "Problem Solving", "Project Management"],
+  "mining engineering": ["Mining Engineering", "Mine Planning", "Blasting", "Ventilation", "Geology", "Mining Software", "Safety", "Problem Solving", "Project Management"],
+  "bachelor of mining engineering": ["Mining Engineering", "Mine Planning", "Blasting", "Ventilation", "Geology", "Mining Software", "Safety", "Problem Solving", "Project Management"],
+  "b.tech mining": ["Mining Engineering", "Mine Planning", "Blasting", "Ventilation", "Geology", "Mining Software", "Safety", "Problem Solving", "Project Management"],
+  "petroleum engineering": ["Petroleum Engineering", "Reservoir Engineering", "Drilling", "Petrel", "Eclipse", "Production Engineering", "Problem Solving", "Project Management"],
+  "bachelor of petroleum engineering": ["Petroleum Engineering", "Reservoir Engineering", "Drilling", "Petrel", "Eclipse", "Production Engineering", "Problem Solving", "Project Management"],
+  "b.tech petroleum": ["Petroleum Engineering", "Reservoir Engineering", "Drilling", "Petrel", "Eclipse", "Production Engineering", "Problem Solving", "Project Management"],
+  "textile engineering": ["Textile Engineering", "Spinning", "Weaving", "Dyeing", "Printing", "Garment Manufacturing", "Quality Control", "Problem Solving"],
+  "bachelor of textile engineering": ["Textile Engineering", "Spinning", "Weaving", "Dyeing", "Printing", "Garment Manufacturing", "Quality Control", "Problem Solving"],
+  "b.tech textile": ["Textile Engineering", "Spinning", "Weaving", "Dyeing", "Printing", "Garment Manufacturing", "Quality Control", "Problem Solving"],
+  "biotechnology": ["Biotechnology", "Molecular Biology", "PCR", "Gel Electrophoresis", "Cell Culture", "ELISA", "Chromatography", "Biochemistry", "Problem Solving", "Lab Techniques"],
+  "bachelor of biotechnology": ["Biotechnology", "Molecular Biology", "PCR", "Gel Electrophoresis", "Cell Culture", "ELISA", "Chromatography", "Biochemistry", "Problem Solving", "Lab Techniques"],
+  "b.tech biotechnology": ["Biotechnology", "Molecular Biology", "PCR", "Gel Electrophoresis", "Cell Culture", "ELISA", "Chromatography", "Biochemistry", "Problem Solving", "Lab Techniques"],
+  "b.sc biotechnology": ["Biotechnology", "Molecular Biology", "PCR", "Gel Electrophoresis", "Cell Culture", "ELISA", "Chromatography", "Biochemistry", "Problem Solving", "Lab Techniques"],
+  "pharmacy": ["Pharmacy", "Pharmacology", "Drug Formulation", "Quality Control", "GMP", "HPLC", "Clinical Research", "Pharmacovigilance", "Problem Solving"],
+  "bachelor of pharmacy": ["Pharmacy", "Pharmacology", "Drug Formulation", "Quality Control", "GMP", "HPLC", "Clinical Research", "Pharmacovigilance", "Problem Solving"],
+  "b.pharm": ["Pharmacy", "Pharmacology", "Drug Formulation", "Quality Control", "GMP", "HPLC", "Clinical Research", "Pharmacovigilance", "Problem Solving"],
+  "architecture": ["AutoCAD", "Revit", "3ds Max", "SketchUp", "Photoshop", "Architectural Design", "Project Management", "Construction Drawing", "Problem Solving"],
+  "bachelor of architecture": ["AutoCAD", "Revit", "3ds Max", "SketchUp", "Photoshop", "Architectural Design", "Project Management", "Construction Drawing", "Problem Solving"],
+  "b.arch": ["AutoCAD", "Revit", "3ds Max", "SketchUp", "Photoshop", "Architectural Design", "Project Management", "Construction Drawing", "Problem Solving"],
+  "interior design": ["AutoCAD", "SketchUp", "3ds Max", "Photoshop", "Interior Design", "Space Planning", "Project Management", "Problem Solving"],
+  "bachelor of interior design": ["AutoCAD", "SketchUp", "3ds Max", "Photoshop", "Interior Design", "Space Planning", "Project Management", "Problem Solving"],
+  "instrumentation engineering": ["PLC", "SCADA", "Instrumentation", "Control Systems", "LabVIEW", "MATLAB", "Sensors", "Problem Solving", "Project Management"],
+  "bachelor of instrumentation engineering": ["PLC", "SCADA", "Instrumentation", "Control Systems", "LabVIEW", "MATLAB", "Sensors", "Problem Solving", "Project Management"],
+  "b.tech instrumentation": ["PLC", "SCADA", "Instrumentation", "Control Systems", "LabVIEW", "MATLAB", "Sensors", "Problem Solving", "Project Management"],
+  "mechatronics engineering": ["Mechatronics", "PLC", "Robotics", "Embedded Systems", "Arduino", "Raspberry Pi", "CAD", "SolidWorks", "Automation", "Problem Solving", "Project Management"],
+  "bachelor of mechatronics engineering": ["Mechatronics", "PLC", "Robotics", "Embedded Systems", "Arduino", "Raspberry Pi", "CAD", "SolidWorks", "Automation", "Problem Solving", "Project Management"],
+  "b.tech mechatronics": ["Mechatronics", "PLC", "Robotics", "Embedded Systems", "Arduino", "Raspberry Pi", "CAD", "SolidWorks", "Automation", "Problem Solving", "Project Management"],
+  "industrial engineering": ["Industrial Engineering", "Lean Manufacturing", "Six Sigma", "Operations Research", "Production Planning", "Quality Control", "Project Management", "Problem Solving"],
+  "bachelor of industrial engineering": ["Industrial Engineering", "Lean Manufacturing", "Six Sigma", "Operations Research", "Production Planning", "Quality Control", "Project Management", "Problem Solving"],
+  "b.tech industrial": ["Industrial Engineering", "Lean Manufacturing", "Six Sigma", "Operations Research", "Production Planning", "Quality Control", "Project Management", "Problem Solving"],
+  "production engineering": ["Production Engineering", "Manufacturing", "Production Planning", "Quality Control", "Lean Manufacturing", "Six Sigma", "Project Management", "Problem Solving"],
+  "bachelor of production engineering": ["Production Engineering", "Manufacturing", "Production Planning", "Quality Control", "Lean Manufacturing", "Six Sigma", "Project Management", "Problem Solving"],
+  "b.tech production": ["Production Engineering", "Manufacturing", "Production Planning", "Quality Control", "Lean Manufacturing", "Six Sigma", "Project Management", "Problem Solving"],
+  "automobile engineering": ["Automotive Engineering", "Vehicle Dynamics", "Powertrain", "IC Engines", "EV Technology", "CAD", "SolidWorks", "CATIA", "AutoCAD", "Manufacturing", "Problem Solving", "Project Management"],
+  "automotive engineering": ["Automotive Engineering", "Vehicle Dynamics", "Powertrain", "IC Engines", "EV Technology", "CAD", "SolidWorks", "CATIA", "AutoCAD", "Manufacturing", "Problem Solving", "Project Management"],
+  "bachelor of automobile engineering": ["Automotive Engineering", "Vehicle Dynamics", "Powertrain", "IC Engines", "EV Technology", "CAD", "SolidWorks", "CATIA", "AutoCAD", "Manufacturing", "Problem Solving", "Project Management"],
+  "bachelor of automotive engineering": ["Automotive Engineering", "Vehicle Dynamics", "Powertrain", "IC Engines", "EV Technology", "CAD", "SolidWorks", "CATIA", "AutoCAD", "Manufacturing", "Problem Solving", "Project Management"],
+  "agriculture": ["Agriculture", "Farm Management", "Crop Production", "Soil Science", "Irrigation", "Pesticide Management", "Agricultural Machinery", "Problem Solving", "Project Management"],
+  "agricultural engineering": ["Agriculture", "Farm Management", "Crop Production", "Soil Science", "Irrigation", "Agricultural Machinery", "Tractor", "Problem Solving", "Project Management"],
+  "bachelor of agricultural engineering": ["Agriculture", "Farm Management", "Crop Production", "Soil Science", "Irrigation", "Agricultural Machinery", "Tractor", "Problem Solving", "Project Management"],
+  "b.tech agricultural engineering": ["Agriculture", "Farm Management", "Crop Production", "Soil Science", "Irrigation", "Agricultural Machinery", "Tractor", "Problem Solving", "Project Management"],
+  "bachelor of science in agriculture": ["Agriculture", "Farm Management", "Crop Production", "Soil Science", "Irrigation", "Pesticide Management", "Agricultural Machinery", "Problem Solving", "Project Management"],
+  "b.sc agriculture": ["Agriculture", "Farm Management", "Crop Production", "Soil Science", "Irrigation", "Pesticide Management", "Agricultural Machinery", "Problem Solving", "Project Management"],
+  "dairy technology": ["Dairy Technology", "Milk Processing", "Food Safety", "Quality Control", "Problem Solving"],
+  "bachelor of dairy technology": ["Dairy Technology", "Milk Processing", "Food Safety", "Quality Control", "Problem Solving"],
+  "b.tech dairy technology": ["Dairy Technology", "Milk Processing", "Food Safety", "Quality Control", "Problem Solving"],
+  "food technology": ["Food Technology", "Food Processing", "Food Safety", "Quality Control", "HACCP", "Problem Solving"],
+  "bachelor of food technology": ["Food Technology", "Food Processing", "Food Safety", "Quality Control", "HACCP", "Problem Solving"],
+  "b.tech food technology": ["Food Technology", "Food Processing", "Food Safety", "Quality Control", "HACCP", "Problem Solving"],
+  "food science and technology": ["Food Technology", "Food Processing", "Food Safety", "Quality Control", "HACCP", "Problem Solving"],
+  "b.sc food science": ["Food Technology", "Food Processing", "Food Safety", "Quality Control", "HACCP", "Problem Solving"],
+  "leather technology": ["Leather Technology", "Footwear Design", "Leather Processing", "Problem Solving"],
+  "bachelor of leather technology": ["Leather Technology", "Footwear Design", "Leather Processing", "Problem Solving"],
+  "b.tech leather technology": ["Leather Technology", "Footwear Design", "Leather Processing", "Problem Solving"],
+  "ceramic engineering": ["Ceramic Engineering", "Materials Science", "Kiln Operation", "Problem Solving"],
+  "bachelor of ceramic engineering": ["Ceramic Engineering", "Materials Science", "Kiln Operation", "Problem Solving"],
+  "b.tech ceramic engineering": ["Ceramic Engineering", "Materials Science", "Kiln Operation", "Problem Solving"],
+  "glass technology": ["Glass Technology", "Materials Science", "Problem Solving"],
+  "bachelor of glass technology": ["Glass Technology", "Materials Science", "Problem Solving"],
+  "plastic technology": ["Plastic Technology", "Polymer Science", "Injection Molding", "Problem Solving"],
+  "bachelor of plastic technology": ["Plastic Technology", "Polymer Science", "Injection Molding", "Problem Solving"],
+  "b.tech plastic technology": ["Plastic Technology", "Polymer Science", "Injection Molding", "Problem Solving"],
+  "rubber technology": ["Rubber Technology", "Polymer Science", "Vulcanization", "Problem Solving"],
+  "bachelor of rubber technology": ["Rubber Technology", "Polymer Science", "Vulcanization", "Problem Solving"],
+  "b.tech rubber technology": ["Rubber Technology", "Polymer Science", "Vulcanization", "Problem Solving"],
+  "paper technology": ["Paper Technology", "Pulp and Paper", "Printing Technology", "Problem Solving"],
+  "bachelor of paper technology": ["Paper Technology", "Pulp and Paper", "Printing Technology", "Problem Solving"],
+  "b.tech paper technology": ["Paper Technology", "Pulp and Paper", "Printing Technology", "Problem Solving"],
+  "printing technology": ["Printing Technology", "Offset Printing", "Flexography", "Prepress", "Problem Solving"],
+  "bachelor of printing technology": ["Printing Technology", "Offset Printing", "Flexography", "Prepress", "Problem Solving"],
+  "b.tech printing technology": ["Printing Technology", "Offset Printing", "Flexography", "Prepress", "Problem Solving"],
+  "textile chemistry": ["Textile Chemistry", "Dyeing", "Printing", "Quality Control", "Problem Solving"],
+  "bachelor of textile chemistry": ["Textile Chemistry", "Dyeing", "Printing", "Quality Control", "Problem Solving"],
+  "b.tech textile chemistry": ["Textile Chemistry", "Dyeing", "Printing", "Quality Control", "Problem Solving"],
+  "manufacturing engineering": ["Manufacturing", "Production Planning", "Quality Control", "Lean Manufacturing", "Six Sigma", "Project Management", "Problem Solving"],
+  "bachelor of manufacturing engineering": ["Manufacturing", "Production Planning", "Quality Control", "Lean Manufacturing", "Six Sigma", "Project Management", "Problem Solving"],
+  "b.tech manufacturing": ["Manufacturing", "Production Planning", "Quality Control", "Lean Manufacturing", "Six Sigma", "Project Management", "Problem Solving"],
+  "automation engineering": ["Automation", "PLC", "SCADA", "Robotics", "Embedded Systems", "Problem Solving", "Project Management"],
+  "bachelor of automation engineering": ["Automation", "PLC", "SCADA", "Robotics", "Embedded Systems", "Problem Solving", "Project Management"],
+  "b.tech automation": ["Automation", "PLC", "SCADA", "Robotics", "Embedded Systems", "Problem Solving", "Project Management"],
+  "mechatronics": ["Mechatronics", "PLC", "Robotics", "Embedded Systems", "CAD", "SolidWorks", "Automation", "Problem Solving", "Project Management"],
+  "bachelor of mechatronics": ["Mechatronics", "PLC", "Robotics", "Embedded Systems", "CAD", "SolidWorks", "Automation", "Problem Solving", "Project Management"],
+  "robotics engineering": ["Robotics", "Embedded Systems", "Arduino", "Raspberry Pi", "PLC", "CAD", "Problem Solving", "Project Management"],
+  "bachelor of robotics engineering": ["Robotics", "Embedded Systems", "Arduino", "Raspberry Pi", "PLC", "CAD", "Problem Solving", "Project Management"],
+  "b.tech robotics": ["Robotics", "Embedded Systems", "Arduino", "Raspberry Pi", "PLC", "CAD", "Problem Solving", "Project Management"],
+  "nanotechnology": ["Nanotechnology", "Materials Science", "Research", "Problem Solving", "Laboratory Techniques"],
+  "bachelor of nanotechnology": ["Nanotechnology", "Materials Science", "Research", "Problem Solving", "Laboratory Techniques"],
+  "b.tech nanotechnology": ["Nanotechnology", "Materials Science", "Research", "Problem Solving", "Laboratory Techniques"],
+  "marine biology": ["Marine Biology", "Oceanography", "Aquaculture", "Research", "Problem Solving", "Laboratory Techniques"],
+  "b.sc marine biology": ["Marine Biology", "Oceanography", "Aquaculture", "Research", "Problem Solving", "Laboratory Techniques"],
+  "fisheries science": ["Fisheries", "Aquaculture", "Fish Processing", "Problem Solving"],
+  "bachelor of fisheries science": ["Fisheries", "Aquaculture", "Fish Processing", "Problem Solving"],
+  "b.f.sc": ["Fisheries", "Aquaculture", "Fish Processing", "Problem Solving"],
+  "veterinary science": ["Veterinary Science", "Animal Husbandry", "Animal Care", "Problem Solving"],
+  "bachelor of veterinary science": ["Veterinary Science", "Animal Husbandry", "Animal Care", "Problem Solving"],
+  "b.v.sc": ["Veterinary Science", "Animal Husbandry", "Animal Care", "Problem Solving"],
+  "bachelor of veterinary science and animal husbandry": ["Veterinary Science", "Animal Husbandry", "Animal Care", "Problem Solving"],
+  "b.v.sc and a.h": ["Veterinary Science", "Animal Husbandry", "Animal Care", "Problem Solving"],
+  "animal husbandry": ["Animal Husbandry", "Veterinary Science", "Animal Care", "Problem Solving"],
+  "b.sc animal husbandry": ["Animal Husbandry", "Veterinary Science", "Animal Care", "Problem Solving"],
+  "sericulture": ["Sericulture", "Silk Production", "Textile", "Agriculture", "Problem Solving"],
+  "b.sc sericulture": ["Sericulture", "Silk Production", "Textile", "Agriculture", "Problem Solving"],
+  "horticulture": ["Horticulture", "Crop Production", "Floriculture", "Landscaping", "Problem Solving"],
+  "b.sc horticulture": ["Horticulture", "Crop Production", "Floriculture", "Landscaping", "Problem Solving"],
+  "bachelor of horticulture": ["Horticulture", "Crop Production", "Floriculture", "Landscaping", "Problem Solving"],
+  "forestry": ["Forestry", "Environmental Science", "Conservation", "Wildlife", "Problem Solving"],
+  "b.sc forestry": ["Forestry", "Environmental Science", "Conservation", "Wildlife", "Problem Solving"],
+  "bachelor of forestry": ["Forestry", "Environmental Science", "Conservation", "Wildlife", "Problem Solving"],
+  "environmental science": ["Environmental Science", "Ecology", "Sustainability", "Research", "Problem Solving"],
+  "b.sc environmental science": ["Environmental Science", "Ecology", "Sustainability", "Research", "Problem Solving"],
+  "m.sc environmental science": ["Environmental Science", "Ecology", "Sustainability", "Research", "Problem Solving"],
+  "geology": ["Geology", "Mining", "Earth Science", "Research", "Problem Solving"],
+  "b.sc geology": ["Geology", "Mining", "Earth Science", "Research", "Problem Solving"],
+  "m.sc geology": ["Geology", "Mining", "Earth Science", "Research", "Problem Solving"],
+  "geography": ["Geography", "GIS", "Remote Sensing", "Cartography", "Research", "Problem Solving"],
+  "b.a geography": ["Geography", "GIS", "Remote Sensing", "Cartography", "Research", "Problem Solving"],
+  "b.sc geography": ["Geography", "GIS", "Remote Sensing", "Cartography", "Research", "Problem Solving"],
+  "m.a geography": ["Geography", "GIS", "Remote Sensing", "Cartography", "Research", "Problem Solving"],
+  "m.sc geography": ["Geography", "GIS", "Remote Sensing", "Cartography", "Research", "Problem Solving"],
+
+  // Medicine / Healthcare
+  "bachelor of medicine bachelor of surgery": ["Medical Knowledge", "Patient Care", "Diagnosis", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "m.b.b.s": ["Medical Knowledge", "Patient Care", "Diagnosis", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "bachelor of dental surgery": ["Dental Knowledge", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "b.d.s": ["Dental Knowledge", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "bachelor of ayurvedic medicine and surgery": ["Ayurveda", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "b.a.m.s": ["Ayurveda", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "bachelor of homeopathic medicine and surgery": ["Homeopathy", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "b.h.m.s": ["Homeopathy", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "bachelor of science in nursing": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "b.sc nursing": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "general nursing and midwifery": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "g.n.m": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "auxiliary nurse midwife": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "a.n.m": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving", "Medical Documentation"],
+  "physiotherapy": ["Physiotherapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "bachelor of physiotherapy": ["Physiotherapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "b.p.t": ["Physiotherapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "m.p.t": ["Physiotherapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "occupational therapy": ["Occupational Therapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "bachelor of occupational therapy": ["Occupational Therapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "b.o.t": ["Occupational Therapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Communication", "Problem Solving"],
+  "speech therapy": ["Speech Therapy", "Audiology", "Communication", "Patient Care", "Problem Solving"],
+  "bachelor of speech therapy": ["Speech Therapy", "Audiology", "Communication", "Patient Care", "Problem Solving"],
+  "b.a.s.l.p": ["Speech Therapy", "Audiology", "Communication", "Patient Care", "Problem Solving"],
+  "audiology": ["Audiology", "Speech Therapy", "Patient Care", "Problem Solving"],
+  "b.sc audiology": ["Audiology", "Speech Therapy", "Patient Care", "Problem Solving"],
+  "optometry": ["Optometry", "Eye Care", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "bachelor of optometry": ["Optometry", "Eye Care", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "b.optom": ["Optometry", "Eye Care", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "medical laboratory technology": ["Medical Laboratory Technology", "Lab Techniques", "Clinical Skills", "Problem Solving"],
+  "b.sc ml t": ["Medical Laboratory Technology", "Lab Techniques", "Clinical Skills", "Problem Solving"],
+  "b.m.l.t": ["Medical Laboratory Technology", "Lab Techniques", "Clinical Skills", "Problem Solving"],
+  "radiography": ["Radiography", "X-Ray", "Imaging", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "bachelor of radiography": ["Radiography", "X-Ray", "Imaging", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "b.sc radiography": ["Radiography", "X-Ray", "Imaging", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "dialysis technology": ["Dialysis Technology", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "b.sc dialysis": ["Dialysis Technology", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "operation theatre technology": ["Operation Theatre Technology", "Patient Care", "Clinical Skills", "Surgical Assistance", "Problem Solving"],
+  "b.sc ott": ["Operation Theatre Technology", "Patient Care", "Clinical Skills", "Surgical Assistance", "Problem Solving"],
+  "anesthesia technology": ["Anesthesia Technology", "Patient Care", "Clinical Skills", "Surgical Assistance", "Problem Solving"],
+  "b.sc anesthesia": ["Anesthesia Technology", "Patient Care", "Clinical Skills", "Surgical Assistance", "Problem Solving"],
+  "cardiac care technology": ["Cardiac Care Technology", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "b.sc cardiac care": ["Cardiac Care Technology", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "respiratory therapy": ["Respiratory Therapy", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "b.sc respiratory therapy": ["Respiratory Therapy", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "nutrition and dietetics": ["Nutrition", "Dietetics", "Food Science", "Patient Care", "Problem Solving"],
+  "b.sc nutrition": ["Nutrition", "Dietetics", "Food Science", "Patient Care", "Problem Solving"],
+  "m.sc nutrition": ["Nutrition", "Dietetics", "Food Science", "Patient Care", "Problem Solving"],
+  "occupational health": ["Occupational Health", "Safety", "Industrial Hygiene", "Problem Solving"],
+  "b.sc occupational health": ["Occupational Health", "Safety", "Industrial Hygiene", "Problem Solving"],
+
+  // Commerce / Business
+  "bachelor of commerce": ["Accounting", "Excel", "Tally", "Financial Analysis", "Banking Operations", "MIS Reporting", "Business Analysis", "GST", "Auditing", "Taxation", "Payroll", "Communication"],
+  "b.com": ["Accounting", "Excel", "Tally", "Financial Analysis", "Banking Operations", "MIS Reporting", "Business Analysis", "GST", "Auditing", "Taxation", "Payroll", "Communication"],
+  "bachelor of business administration": ["Business Analysis", "Project Management", "Operations", "Communication", "Excel", "CRM", "Marketing", "Sales", "Business Development", "Customer Success", "Leadership"],
+  "bba": ["Business Analysis", "Project Management", "Operations", "Communication", "Excel", "CRM", "Marketing", "Sales", "Business Development", "Customer Success", "Leadership"],
+  "master of business administration": ["Project Management", "Business Analysis", "Operations", "Strategic Planning", "Leadership", "Financial Analysis", "Negotiation", "Change Management", "Stakeholder Management", "Business Strategy"],
+  "mba": ["Project Management", "Business Analysis", "Operations", "Strategic Planning", "Leadership", "Financial Analysis", "Negotiation", "Change Management", "Stakeholder Management", "Business Strategy"],
+  "bachelor of commerce in accounting": ["Accounting", "Excel", "Tally", "Financial Analysis", "Auditing", "Taxation", "Communication"],
+  "b.com accounting": ["Accounting", "Excel", "Tally", "Financial Analysis", "Auditing", "Taxation", "Communication"],
+  "bachelor of commerce in finance": ["Financial Analysis", "Excel", "Tally", "Banking Operations", "Investment", "Risk Management", "Problem Solving"],
+  "b.com finance": ["Financial Analysis", "Excel", "Tally", "Banking Operations", "Investment", "Risk Management", "Problem Solving"],
+  "bachelor of commerce in taxation": ["Taxation", "Accounting", "Excel", "GST", "Auditing", "Problem Solving"],
+  "b.com taxation": ["Taxation", "Accounting", "Excel", "GST", "Auditing", "Problem Solving"],
+  "bachelor of commerce in computer applications": ["Accounting", "Excel", "Tally", "Computer Applications", "Data Entry", "Problem Solving"],
+  "b.com ca": ["Accounting", "Excel", "Tally", "Computer Applications", "Data Entry", "Problem Solving"],
+  "bachelor of commerce in e-commerce": ["E-commerce", "Digital Marketing", "Accounting", "Excel", "Problem Solving"],
+  "b.com e-commerce": ["E-commerce", "Digital Marketing", "Accounting", "Excel", "Problem Solving"],
+  "bachelor of commerce in banking": ["Banking Operations", "Accounting", "Excel", "Financial Analysis", "Problem Solving"],
+  "b.com banking": ["Banking Operations", "Accounting", "Excel", "Financial Analysis", "Problem Solving"],
+  "bachelor of commerce in insurance": ["Insurance", "Accounting", "Excel", "Risk Management", "Problem Solving"],
+  "b.com insurance": ["Insurance", "Accounting", "Excel", "Risk Management", "Problem Solving"],
+  "bachelor of commerce in marketing": ["Marketing", "Sales", "Business Development", "Communication", "Excel", "Problem Solving"],
+  "b.com marketing": ["Marketing", "Sales", "Business Development", "Communication", "Excel", "Problem Solving"],
+  "bachelor of commerce in international business": ["International Business", "Export Import", "Logistics", "Communication", "Problem Solving"],
+  "b.com ib": ["International Business", "Export Import", "Logistics", "Communication", "Problem Solving"],
+  "chartered accountancy": ["Accounting", "Audit", "Taxation", "Financial Analysis", "Excel", "Communication", "Problem Solving"],
+  "c.a": ["Accounting", "Audit", "Taxation", "Financial Analysis", "Excel", "Communication", "Problem Solving"],
+  "company secretary": ["Company Law", "Corporate Governance", "Compliance", "Secretarial Practice", "Communication", "Problem Solving"],
+  "c.s": ["Company Law", "Corporate Governance", "Compliance", "Secretarial Practice", "Communication", "Problem Solving"],
+  "cost and management accountancy": ["Cost Accounting", "Financial Analysis", "Excel", "Audit", "Problem Solving"],
+  "c.m.a": ["Cost Accounting", "Financial Analysis", "Excel", "Audit", "Problem Solving"],
+  "cma": ["Cost Accounting", "Financial Analysis", "Excel", "Audit", "Problem Solving"],
+
+  // Computer Applications
+  "bachelor of computer applications": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "HTML", "CSS", "React", "Problem Solving", "Database Management"],
+  "bca": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "HTML", "CSS", "React", "Problem Solving", "Database Management"],
+  "master of computer applications": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Project Management", "Problem Solving", "AWS", "Docker", "System Design"],
+  "mca": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Project Management", "Problem Solving", "AWS", "Docker", "System Design"],
+
+  // Law
+  "bachelor of laws": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "ll.b": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "bachelor of arts bachelor of laws": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "b.a ll.b": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "bachelor of business administration bachelor of laws": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "b.b.a ll.b": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "master of laws": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "ll.m": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "bachelor of legislative law": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "b.b.a.ll.b": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "b.com.ll.b": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "b.sc.ll.b": ["Legal Research", "Legal Writing", "Litigation", "Contract Law", "Communication", "Negotiation", "Problem Solving", "Documentation"],
+  "bachelor of business law": ["Legal Research", "Legal Writing", "Contract Law", "Business Law", "Communication", "Negotiation", "Problem Solving"],
+  "b.b.l": ["Legal Research", "Legal Writing", "Contract Law", "Business Law", "Communication", "Negotiation", "Problem Solving"],
+  "master of business law": ["Legal Research", "Legal Writing", "Contract Law", "Business Law", "Communication", "Negotiation", "Problem Solving"],
+  "m.b.l": ["Legal Research", "Legal Writing", "Contract Law", "Business Law", "Communication", "Negotiation", "Problem Solving"],
+  "diploma in cyber law": ["Cyber Law", "Legal Research", "IT Law", "Communication", "Problem Solving"],
+  "diploma in labour law": ["Labour Law", "Legal Research", "HR", "Communication", "Problem Solving"],
+  "diploma in tax law": ["Tax Law", "Legal Research", "Accounting", "Communication", "Problem Solving"],
+
+  // Arts / Humanities / Science
+  "bachelor of arts": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving", "Content Writing", "Public Speaking", "Content Creation"],
+  "b.a": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving", "Content Writing", "Public Speaking", "Content Creation"],
+  "master of arts": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving", "Content Writing", "Public Speaking", "Content Creation"],
+  "m.a": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving", "Content Writing", "Public Speaking", "Content Creation"],
+  "bachelor of science": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication", "Python", "Laboratory Techniques", "Data Visualization"],
+  "b.sc": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication", "Python", "Laboratory Techniques", "Data Visualization"],
+  "master of science": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication", "Python", "Laboratory Techniques", "Data Visualization"],
+  "m.sc": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication", "Python", "Laboratory Techniques", "Data Visualization"],
+  "bachelor of arts in english": ["Communication", "Writing", "Research", "Content Writing", "Editing", "Problem Solving"],
+  "b.a english": ["Communication", "Writing", "Research", "Content Writing", "Editing", "Problem Solving"],
+  "m.a english": ["Communication", "Writing", "Research", "Content Writing", "Editing", "Problem Solving"],
+  "bachelor of arts in hindi": ["Communication", "Writing", "Research", "Translation", "Problem Solving"],
+  "b.a hindi": ["Communication", "Writing", "Research", "Translation", "Problem Solving"],
+  "m.a hindi": ["Communication", "Writing", "Research", "Translation", "Problem Solving"],
+  "bachelor of arts in regional language": ["Communication", "Writing", "Research", "Translation", "Problem Solving"],
+  "bachelor of sociology": ["Sociology", "Research", "Communication", "Problem Solving", "Social Work", "Counseling"],
+  "b.a sociology": ["Sociology", "Research", "Communication", "Problem Solving", "Social Work", "Counseling"],
+  "m.a sociology": ["Sociology", "Research", "Communication", "Problem Solving", "Social Work", "Counseling"],
+  "bachelor of psychology": ["Psychology", "Counseling", "Communication", "Research", "Problem Solving", "Active Listening"],
+  "b.a psychology": ["Psychology", "Counseling", "Communication", "Research", "Problem Solving", "Active Listening"],
+  "b.sc psychology": ["Psychology", "Counseling", "Communication", "Research", "Problem Solving", "Active Listening"],
+  "m.a psychology": ["Psychology", "Counseling", "Communication", "Research", "Problem Solving", "Active Listening"],
+  "m.sc psychology": ["Psychology", "Counseling", "Communication", "Research", "Problem Solving", "Active Listening"],
+  "bachelor of political science": ["Political Science", "Research", "Communication", "Public Administration", "Problem Solving"],
+  "b.a political science": ["Political Science", "Research", "Communication", "Public Administration", "Problem Solving"],
+  "m.a political science": ["Political Science", "Research", "Communication", "Public Administration", "Problem Solving"],
+  "bachelor of history": ["History", "Research", "Communication", "Writing", "Critical Thinking", "Problem Solving"],
+  "b.a history": ["History", "Research", "Communication", "Writing", "Critical Thinking", "Problem Solving"],
+  "m.a history": ["History", "Research", "Communication", "Writing", "Critical Thinking", "Problem Solving"],
+  "bachelor of economics": ["Economics", "Data Analysis", "Statistics", "Research", "Excel", "Problem Solving"],
+  "b.a economics": ["Economics", "Data Analysis", "Statistics", "Research", "Excel", "Problem Solving"],
+  "b.sc economics": ["Economics", "Data Analysis", "Statistics", "Research", "Excel", "Problem Solving"],
+  "m.a economics": ["Economics", "Data Analysis", "Statistics", "Research", "Excel", "Problem Solving"],
+  "m.sc economics": ["Economics", "Data Analysis", "Statistics", "Research", "Excel", "Problem Solving"],
+  "bachelor of philosophy": ["Philosophy", "Critical Thinking", "Research", "Writing", "Communication", "Problem Solving"],
+  "b.a philosophy": ["Philosophy", "Critical Thinking", "Research", "Writing", "Communication", "Problem Solving"],
+  "m.a philosophy": ["Philosophy", "Critical Thinking", "Research", "Writing", "Communication", "Problem Solving"],
+  "bachelor of public administration": ["Public Administration", "Communication", "Research", "Problem Solving", "Governance"],
+  "b.a public administration": ["Public Administration", "Communication", "Research", "Problem Solving", "Governance"],
+  "m.a public administration": ["Public Administration", "Communication", "Research", "Problem Solving", "Governance"],
+
+  // Diplomas / ITI / Polytechnic
+  "diploma in mechanical engineering": ["CAD", "AutoCAD", "Manufacturing", "Production Planning", "Quality Control", "Maintenance", "Workshop Technology", "Problem Solving", "Project Management"],
+  "diploma in computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "Technical Support", "Networking", "HTML", "CSS", "Problem Solving"],
+  "diploma in electrical engineering": ["PLC", "Electrical Design", "Maintenance", "Power Systems", "AutoCAD Electrical", "Problem Solving"],
+  "diploma in civil engineering": ["AutoCAD", "Construction Management", "Quality Control", "Project Management", "Site Supervision", "Problem Solving"],
+  "diploma in electronics and communication engineering": ["Embedded Systems", "Circuit Design", "Arduino", "PLC", "SCADA", "Networking", "PCB Design", "Problem Solving"],
+  "diploma in chemical engineering": ["Chemical Process Design", "Plant Design", "Safety Engineering", "Quality Control", "Problem Solving"],
+  "diploma in aeronautical engineering": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Problem Solving", "Project Management"],
+  "diploma in aerospace engineering": ["Aerodynamics", "Aircraft Design", "CATIA", "NX", "ANSYS", "CFD", "FEA", "Flight Mechanics", "Propulsion", "Problem Solving", "Project Management"],
+  "diploma in marine engineering": ["Marine Engineering", "Naval Architecture", "Ship Design", "Marine Propulsion", "Maintenance", "Welding", "Problem Solving", "Project Management"],
+  "diploma in mining engineering": ["Mining Engineering", "Mine Planning", "Blasting", "Ventilation", "Geology", "Mining Software", "Safety", "Problem Solving", "Project Management"],
+  "diploma in petroleum engineering": ["Petroleum Engineering", "Reservoir Engineering", "Drilling", "Petrel", "Eclipse", "Production Engineering", "Problem Solving", "Project Management"],
+  "diploma in textile engineering": ["Textile Engineering", "Spinning", "Weaving", "Dyeing", "Printing", "Garment Manufacturing", "Quality Control", "Problem Solving"],
+  "diploma in biotechnology": ["Biotechnology", "Molecular Biology", "PCR", "Gel Electrophoresis", "Cell Culture", "ELISA", "Chromatography", "Biochemistry", "Problem Solving", "Lab Techniques"],
+  "diploma in pharmacy": ["Pharmacy", "Pharmacology", "Drug Formulation", "Quality Control", "GMP", "HPLC", "Problem Solving"],
+  "d.pharm": ["Pharmacy", "Pharmacology", "Drug Formulation", "Quality Control", "GMP", "HPLC", "Problem Solving"],
+  "diploma in architecture": ["AutoCAD", "Revit", "3ds Max", "SketchUp", "Photoshop", "Architectural Design", "Project Management", "Construction Drawing", "Problem Solving"],
+  "diploma in interior design": ["AutoCAD", "SketchUp", "3ds Max", "Photoshop", "Interior Design", "Space Planning", "Project Management", "Problem Solving"],
+  "industrial training institute": ["Technical Skills", "Trade Skills", "Problem Solving", "Safety", "Communication"],
+  "i.t.i": ["Technical Skills", "Trade Skills", "Problem Solving", "Safety", "Communication"],
+  "diploma in automobile engineering": ["Automotive Engineering", "Vehicle Dynamics", "Powertrain", "IC Engines", "CAD", "AutoCAD", "Manufacturing", "Problem Solving", "Project Management"],
+  "diploma in electronics and communication": ["Embedded Systems", "Circuit Design", "Arduino", "PLC", "SCADA", "Networking", "PCB Design", "Problem Solving"],
+  "diploma in hotel management": ["Hospitality", "Customer Service", "Food & Beverage", "Front Office", "Housekeeping", "Event Management", "Communication", "Problem Solving"],
+  "diploma in travel and tourism": ["Travel", "Tourism", "Hospitality", "Customer Service", "Communication", "Problem Solving"],
+  "diploma in event management": ["Event Management", "Planning", "Communication", "Project Management", "Problem Solving"],
+  "diploma in culinary arts": ["Culinary Arts", "Food Production", "Kitchen Management", "Hospitality", "Problem Solving"],
+  "diploma in bakery and confectionery": ["Bakery", "Confectionery", "Food Production", "Hospitality", "Problem Solving"],
+  "diploma in front office operations": ["Front Office", "Hospitality", "Customer Service", "Communication", "Problem Solving"],
+  "diploma in housekeeping": ["Housekeeping", "Hospitality", "Cleaning Management", "Problem Solving"],
+  "diploma in food and beverage service": ["Food & Beverage", "Hospitality", "Customer Service", "Problem Solving"],
+  "diploma in interior decoration": ["Interior Design", "Space Planning", "AutoCAD", "SketchUp", "Problem Solving"],
+  "diploma in fashion illustration": ["Fashion Design", "Illustration", "Sketching", "Creativity", "Problem Solving"],
+  "diploma in textile design": ["Textile Design", "Weaving", "Dyeing", "Printing", "Creativity", "Problem Solving"],
+  "diploma in jewellery design": ["Jewelry Design", "Fashion Design", "Creativity", "Problem Solving"],
+  "diploma in makeup artistry": ["Makeup Artistry", "Cosmetology", "Beauty", "Problem Solving"],
+  "diploma in cosmetology": ["Cosmetology", "Beauty", "Skin Care", "Hair Care", "Problem Solving"],
+  "diploma in beauty and wellness": ["Beauty", "Wellness", "Spa", "Massage", "Problem Solving"],
+  "diploma in yoga": ["Yoga", "Wellness", "Fitness", "Communication", "Problem Solving"],
+  "diploma in naturopathy": ["Naturopathy", "Wellness", "Health Care", "Problem Solving"],
+  "diploma in physiotherapy": ["Physiotherapy", "Patient Care", "Rehabilitation", "Clinical Skills", "Problem Solving"],
+  "diploma in nursing": ["Nursing", "Patient Care", "Clinical Skills", "Communication", "Problem Solving"],
+  "diploma in medical lab technology": ["Medical Laboratory Technology", "Lab Techniques", "Clinical Skills", "Problem Solving"],
+  "diploma in radiology": ["Radiography", "X-Ray", "Imaging", "Clinical Skills", "Problem Solving"],
+  "diploma in operation theatre technology": ["Operation Theatre Technology", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "diploma in dialysis technology": ["Dialysis Technology", "Patient Care", "Clinical Skills", "Problem Solving"],
+  "diploma in optometry": ["Optometry", "Eye Care", "Clinical Skills", "Patient Care", "Problem Solving"],
+  "diploma in computer applications": ["Computer Applications", "MS Office", "Data Entry", "Basic Computer Skills", "Problem Solving"],
+  "d.c.a": ["Computer Applications", "MS Office", "Data Entry", "Basic Computer Skills", "Problem Solving"],
+  "post graduate diploma in computer applications": ["Computer Applications", "Python", "Java", "SQL", "Web Development", "Problem Solving"],
+  "p.g.d.c.a": ["Computer Applications", "Python", "Java", "SQL", "Web Development", "Problem Solving"],
+
+  // Education / Teaching
+  "bachelor of education": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Curriculum Development", "Problem Solving"],
+  "b.ed": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Curriculum Development", "Problem Solving"],
+  "master of education": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Curriculum Development", "Problem Solving", "Educational Leadership"],
+  "m.ed": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Curriculum Development", "Problem Solving", "Educational Leadership"],
+  "diploma in elementary education": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Curriculum Development", "Problem Solving"],
+  "d.el.ed": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Curriculum Development", "Problem Solving"],
+  "nursery teacher training": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Problem Solving"],
+  "n.t.t": ["Teaching", "Lesson Planning", "Classroom Management", "Communication", "Child Psychology", "Problem Solving"],
+  "bachelor of physical education": ["Physical Education", "Sports", "Coaching", "Fitness", "Communication", "Problem Solving"],
+  "b.p.e": ["Physical Education", "Sports", "Coaching", "Fitness", "Communication", "Problem Solving"],
+  "bachelor of sports management": ["Sports Management", "Event Management", "Communication", "Project Management", "Problem Solving"],
+  "b.s.m": ["Sports Management", "Event Management", "Communication", "Project Management", "Problem Solving"],
+  "bachelor of library science": ["Library Science", "Information Management", "Research", "Cataloging", "Communication", "Problem Solving"],
+  "b.l.i.s": ["Library Science", "Information Management", "Research", "Cataloging", "Communication", "Problem Solving"],
+  "master of library science": ["Library Science", "Information Management", "Research", "Cataloging", "Communication", "Problem Solving"],
+  "m.l.i.s": ["Library Science", "Information Management", "Research", "Cataloging", "Communication", "Problem Solving"],
+  "diploma in library science": ["Library Science", "Information Management", "Research", "Cataloging", "Communication", "Problem Solving"],
+  "d.l.i.s": ["Library Science", "Information Management", "Research", "Cataloging", "Communication", "Problem Solving"],
+
+  // Design / Creative
+  "bachelor of design": ["Graphic Design", "UI Design", "UX Design", "Figma", "Photoshop", "Illustrator", "Creativity", "Problem Solving"],
+  "b.des": ["Graphic Design", "UI Design", "UX Design", "Figma", "Photoshop", "Illustrator", "Creativity", "Problem Solving"],
+  "bachelor of fine arts": ["Fine Arts", "Drawing", "Painting", "Sketching", "Creativity", "Problem Solving"],
+  "b.f.a": ["Fine Arts", "Drawing", "Painting", "Sketching", "Creativity", "Problem Solving"],
+  "master of fine arts": ["Fine Arts", "Drawing", "Painting", "Sketching", "Creativity", "Problem Solving"],
+  "m.f.a": ["Fine Arts", "Drawing", "Painting", "Sketching", "Creativity", "Problem Solving"],
+  "bachelor of fashion communication": ["Fashion Design", "Communication", "Content Writing", "Social Media", "Creativity", "Problem Solving"],
+  "b.f.c": ["Fashion Design", "Communication", "Content Writing", "Social Media", "Creativity", "Problem Solving"],
+  "bachelor of accessory design": ["Accessory Design", "Jewelry Design", "Fashion Design", "Creativity", "Problem Solving"],
+  "bachelor of knitwear design": ["Knitwear Design", "Textile Design", "Fashion Design", "Creativity", "Problem Solving"],
+  "bachelor of leather design": ["Leather Design", "Fashion Design", "Creativity", "Problem Solving"],
+  "bachelor of product design": ["Product Design", "CAD", "Creativity", "Problem Solving", "Project Management"],
+  "b.des product": ["Product Design", "CAD", "Creativity", "Problem Solving", "Project Management"],
+  "bachelor of communication design": ["Communication Design", "Graphic Design", "UI Design", "UX Design", "Creativity", "Problem Solving"],
+  "b.des communication": ["Communication Design", "Graphic Design", "UI Design", "UX Design", "Creativity", "Problem Solving"],
+  "bachelor of animation": ["Animation", "2D Animation", "3D Animation", "Motion Graphics", "Creativity", "Problem Solving"],
+  "b.sc animation": ["Animation", "2D Animation", "3D Animation", "Motion Graphics", "Creativity", "Problem Solving"],
+  "bachelor of multimedia": ["Multimedia", "Graphic Design", "Video Editing", "Animation", "Creativity", "Problem Solving"],
+  "b.sc multimedia": ["Multimedia", "Graphic Design", "Video Editing", "Animation", "Creativity", "Problem Solving"],
+  "bachelor of film making": ["Film Making", "Video Editing", "Cinematography", "Direction", "Creativity", "Problem Solving"],
+  "b.sc film making": ["Film Making", "Video Editing", "Cinematography", "Direction", "Creativity", "Problem Solving"],
+  "bachelor of photography": ["Photography", "Photo Editing", "Creativity", "Problem Solving"],
+  "b.sc photography": ["Photography", "Photo Editing", "Creativity", "Problem Solving"],
+  "diploma in fashion design": ["Fashion Design", "Textile Design", "Garment Manufacturing", "Pattern Making", "Illustration", "Creativity", "Problem Solving"],
+  "diploma in graphic design": ["Graphic Design", "Photoshop", "Illustrator", "CorelDRAW", "Creativity", "Problem Solving"],
+  "diploma in animation": ["Animation", "2D Animation", "3D Animation", "Motion Graphics", "Creativity", "Problem Solving"],
+  "diploma in web design": ["Web Design", "HTML", "CSS", "JavaScript", "Figma", "UI Design", "Problem Solving"],
+  "bachelor of fashion technology": ["Fashion Design", "Textile Design", "Garment Manufacturing", "Pattern Making", "Illustration", "Creativity", "Problem Solving"],
+  "b.f.tech": ["Fashion Design", "Textile Design", "Garment Manufacturing", "Pattern Making", "Illustration", "Creativity", "Problem Solving"],
+  "bachelor of fashion design": ["Fashion Design", "Textile Design", "Garment Manufacturing", "Pattern Making", "Illustration", "Creativity", "Problem Solving"],
+
+  // Hotel Management / Hospitality
+  "bachelor of hotel management": ["Hospitality", "Customer Service", "Food & Beverage", "Front Office", "Housekeeping", "Event Management", "Communication", "Problem Solving"],
+  "b.h.m": ["Hospitality", "Customer Service", "Food & Beverage", "Front Office", "Housekeeping", "Event Management", "Communication", "Problem Solving"],
+  "bachelor of hospitality management": ["Hospitality", "Customer Service", "Food & Beverage", "Front Office", "Housekeeping", "Event Management", "Communication", "Problem Solving"],
+  "bachelor of hotel management and catering technology": ["Hospitality", "Customer Service", "Food & Beverage", "Front Office", "Housekeeping", "Event Management", "Communication", "Problem Solving"],
+  "b.h.m.c.t": ["Hospitality", "Customer Service", "Food & Beverage", "Front Office", "Housekeeping", "Event Management", "Communication", "Problem Solving"],
+  "bachelor of travel and tourism management": ["Travel", "Tourism", "Hospitality", "Customer Service", "Communication", "Problem Solving"],
+  "b.t.t.m": ["Travel", "Tourism", "Hospitality", "Customer Service", "Communication", "Problem Solving"],
+  "bachelor of event management": ["Event Management", "Planning", "Communication", "Project Management", "Problem Solving"],
+  "b.e.m": ["Event Management", "Planning", "Communication", "Project Management", "Problem Solving"],
+
+  // Social Work / Psychology / Mass Comm
+  "bachelor of social work": ["Social Work", "Community Development", "Counseling", "Communication", "Problem Solving", "Case Management"],
+  "b.s.w": ["Social Work", "Community Development", "Counseling", "Communication", "Problem Solving", "Case Management"],
+  "master of social work": ["Social Work", "Community Development", "Counseling", "Communication", "Problem Solving", "Case Management"],
+  "m.s.w": ["Social Work", "Community Development", "Counseling", "Communication", "Problem Solving", "Case Management"],
+  "bachelor of mass communication": ["Communication", "Content Writing", "Journalism", "Public Relations", "Media Production", "Social Media", "Problem Solving"],
+  "b.m.m.c": ["Communication", "Content Writing", "Journalism", "Public Relations", "Media Production", "Social Media", "Problem Solving"],
+  "bachelor of journalism": ["Communication", "Content Writing", "Journalism", "Public Relations", "Media Production", "Social Media", "Problem Solving"],
+  "bachelor of journalism and mass communication": ["Communication", "Content Writing", "Journalism", "Public Relations", "Media Production", "Social Media", "Problem Solving"],
+  "b.a.j.m.c": ["Communication", "Content Writing", "Journalism", "Public Relations", "Media Production", "Social Media", "Problem Solving"],
+
+  // Science specializations
+  "b.sc physics": ["Physics", "Research", "Laboratory Techniques", "Data Analysis", "Problem Solving"],
+  "m.sc physics": ["Physics", "Research", "Laboratory Techniques", "Data Analysis", "Problem Solving"],
+  "b.sc chemistry": ["Chemistry", "Laboratory Techniques", "Chemical Analysis", "Problem Solving"],
+  "m.sc chemistry": ["Chemistry", "Laboratory Techniques", "Chemical Analysis", "Problem Solving"],
+  "b.sc mathematics": ["Mathematics", "Statistics", "Data Analysis", "Research", "Problem Solving"],
+  "m.sc mathematics": ["Mathematics", "Statistics", "Data Analysis", "Research", "Problem Solving"],
+  "b.sc statistics": ["Statistics", "Data Analysis", "Excel", "Research", "Problem Solving"],
+  "m.sc statistics": ["Statistics", "Data Analysis", "Excel", "Research", "Problem Solving"],
+  "b.sc microbiology": ["Microbiology", "Laboratory Techniques", "Research", "Problem Solving"],
+  "m.sc microbiology": ["Microbiology", "Laboratory Techniques", "Research", "Problem Solving"],
+  "b.sc biochemistry": ["Biochemistry", "Laboratory Techniques", "Research", "Problem Solving"],
+  "m.sc biochemistry": ["Biochemistry", "Laboratory Techniques", "Research", "Problem Solving"],
+  "b.sc zoology": ["Zoology", "Laboratory Techniques", "Research", "Problem Solving"],
+  "m.sc zoology": ["Zoology", "Laboratory Techniques", "Research", "Problem Solving"],
+  "b.sc botany": ["Botany", "Laboratory Techniques", "Research", "Problem Solving"],
+  "m.sc botany": ["Botany", "Laboratory Techniques", "Research", "Problem Solving"],
+  "bachelor of science in information technology": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "Technical Support", "Problem Solving"],
+  "b.sc it": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "Technical Support", "Problem Solving"],
+  "master of science in information technology": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "System Administration", "Problem Solving"],
+  "m.sc it": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "System Administration", "Problem Solving"],
+  "bachelor of science in computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "Problem Solving"],
+  "b.sc cs": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "Problem Solving"],
+  "master of science in computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "System Design", "Problem Solving"],
+  "m.sc cs": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "System Design", "Problem Solving"],
+  "bachelor of science in cyber security": ["Cybersecurity", "Networking", "Ethical Hacking", "Problem Solving", "Linux"],
+  "b.sc cyber security": ["Cybersecurity", "Networking", "Ethical Hacking", "Problem Solving", "Linux"],
+  "bachelor of science in data science": ["Data Science", "Python", "Machine Learning", "Statistics", "SQL", "Data Analysis", "Problem Solving"],
+  "b.sc data science": ["Data Science", "Python", "Machine Learning", "Statistics", "SQL", "Data Analysis", "Problem Solving"],
+  "m.sc data science": ["Data Science", "Python", "Machine Learning", "Statistics", "SQL", "Data Analysis", "Problem Solving"],
+  "bachelor of science in artificial intelligence": ["Artificial Intelligence", "Machine Learning", "Python", "Data Science", "Problem Solving"],
+  "b.sc ai": ["Artificial Intelligence", "Machine Learning", "Python", "Data Science", "Problem Solving"],
+  "m.sc ai": ["Artificial Intelligence", "Machine Learning", "Python", "Data Science", "Problem Solving"],
+  "bachelor of science in cloud computing": ["Cloud Computing", "AWS", "Azure", "Docker", "Linux", "Problem Solving"],
+  "b.sc cloud computing": ["Cloud Computing", "AWS", "Azure", "Docker", "Linux", "Problem Solving"],
+
+  // General / Fallback catch-alls
+  "diploma-general": ["Technical Skills", "Problem Solving", "Communication", "Teamwork"],
+  "certificate": ["Basic Skills", "Problem Solving", "Communication"],
+  "it-is": ["Technical Skills", "Trade Skills", "Problem Solving", "Safety", "Communication"],
+  "12th": ["Communication", "Basic Computer Skills", "Problem Solving", "Customer Service", "Data Entry"],
+  "10th": ["Communication", "Basic Computer Skills", "Problem Solving", "Customer Service", "Data Entry"],
+  "any graduate": ["Communication", "Problem Solving", "Teamwork", "Excel", "Data Entry", "Customer Service", "Basic Computer Skills"],
+  "graduate": ["Communication", "Problem Solving", "Teamwork", "Excel", "Data Entry", "Customer Service", "Basic Computer Skills"],
+  "post graduate": ["Communication", "Problem Solving", "Teamwork", "Excel", "Data Entry", "Customer Service", "Basic Computer Skills"],
+  "12th pass": ["Communication", "Basic Computer Skills", "Problem Solving", "Customer Service", "Data Entry"],
+  "higher secondary": ["Communication", "Basic Computer Skills", "Problem Solving", "Customer Service", "Data Entry"],
+  "10th pass": ["Communication", "Basic Computer Skills", "Problem Solving", "Customer Service", "Data Entry"],
+};
+
+const SKILLS: SkillDefinition[] = [
   // Automotive / mechanical
   { name: "Automotive Engineering", category: "Automotive", aliases: ["automotive engineering", "automobile engineering", "automotive technology"] },
   { name: "Vehicle Dynamics", category: "Automotive", aliases: ["vehicle dynamics", "ride and handling", "suspension design"] },
@@ -49,8 +532,6 @@ export const SKILLS: SkillDefinition[] = [
   { name: "Embedded Systems", category: "Automation", aliases: ["embedded systems", "embedded c", "microcontroller", "arduino", "raspberry pi"] },
   { name: "IoT", category: "Automation", aliases: ["internet of things", "iot"] },
   { name: "Mechatronics", category: "Automation", aliases: ["mechatronics"] },
-
-  // Software / data
   { name: "Python", category: "Programming", aliases: ["python"] },
   { name: "Java", category: "Programming", aliases: ["java"] },
   { name: "JavaScript", category: "Programming", aliases: ["javascript", "js"] },
@@ -87,8 +568,6 @@ export const SKILLS: SkillDefinition[] = [
   { name: "System Administration", category: "IT", aliases: ["system administration", "sysadmin", "active directory", "windows server"] },
   { name: "Cybersecurity", category: "IT", aliases: ["cybersecurity", "information security", "penetration testing", "soc"] },
   { name: "Product Management", category: "Business", aliases: ["product management", "product owner", "product roadmap"] },
-
-  // Business / support / finance / marketing
   { name: "Business Analysis", category: "Business", aliases: ["business analysis", "business analyst", "requirements gathering", "brd", "functional requirements"] },
   { name: "Business Development", category: "Sales", aliases: ["business development", "lead generation", "b2b sales", "prospecting"] },
   { name: "Sales", category: "Sales", aliases: ["sales", "inside sales", "field sales", "sales executive", "revenue targets"] },
@@ -110,13 +589,14 @@ export const SKILLS: SkillDefinition[] = [
   { name: "Payroll", category: "HR", aliases: ["payroll", "salary processing", "statutory compliance"] },
   { name: "Recruitment", category: "HR", aliases: ["recruitment", "talent acquisition", "sourcing candidates", "hr operations"] },
   { name: "Digital Marketing", category: "Marketing", aliases: ["digital marketing", "performance marketing", "paid campaigns", "google ads", "meta ads"] },
-  { name: "SEO", category: "Marketing", aliases: ["seo", "search engine optimization", "keyword research", "on-page"] },
-  { name: "Social Media Marketing", category: "Marketing", aliases: ["social media", "social media marketing", "instagram marketing", "linkedin marketing"] },
-  { name: "Content Writing", category: "Marketing", aliases: ["content writing", "copywriting", "content creation", "blog writing"] },
-  { name: "Graphic Design", category: "Design", aliases: ["graphic design", "photoshop", "illustrator", "canva", "adobe creative suite"] },
-  { name: "Video Editing", category: "Marketing", aliases: ["video editing", "premiere pro", "after effects", "final cut"] },
-  { name: "Figma", category: "Design", aliases: ["figma", "ui design", "ux design", "wireframing"] },
-  { name: "Market Research", category: "Marketing", aliases: ["market research", "competitor analysis", "consumer insights"] },
+  { name: "SEO", category: "Marketing", aliases: ["seo", "search engine optimization"] },
+  { name: "Social Media Marketing", category: "Marketing", aliases: ["social media marketing", "smm", "social media"] },
+  { name: "Content Writing", category: "Marketing", aliases: ["content writing", "copywriting", "content creation"] },
+  { name: "Graphic Design", category: "Design", aliases: ["graphic design", "visual design"] },
+  { name: "UI Design", category: "Design", aliases: ["ui design", "user interface design"] },
+  { name: "UX Design", category: "Design", aliases: ["ux design", "user experience design"] },
+  { name: "Figma", category: "Design", aliases: ["figma"] },
+  { name: "Video Editing", category: "Marketing", aliases: ["video editing", "video production"] },
 ];
 
 const SKILL_ALIAS_INDEX = new Map<string, SkillDefinition>();
@@ -127,7 +607,6 @@ for (const skill of SKILLS) {
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Canonicalise a free-text skill. Unknown skills are title-cased and kept. */
 export function canonicalSkill(raw: string): string {
   const cleaned = raw.trim().replace(/\s+/g, " ");
   if (!cleaned) return "";
@@ -147,14 +626,13 @@ export function skillCategory(name: string): string {
   return SKILL_ALIAS_INDEX.get(name.toLowerCase())?.category ?? "Other";
 }
 
-/** Extract canonical skills from a job description/title. */
 export function extractSkills(text: string, limit = 30): string[] {
   const haystack = text.toLowerCase();
   const found = new Map<string, number>();
   for (const skill of SKILLS) {
     for (const alias of skill.aliases) {
       if (alias.length < 2) continue;
-      const re = new RegExp(`(^|[^a-z0-9+#.])${escapeRegex(alias.toLowerCase())}([^a-z0-9+#.]|$)`, "g");
+      const re = new RegExp(`(^|[^a-z0-9+#.])${escapeRegex(alias.toLowerCase())}([^^a-z0-9+#.]|$)`, "g");
       const matches = haystack.match(re);
       if (matches) found.set(skill.name, (found.get(skill.name) ?? 0) + matches.length);
     }
@@ -163,6 +641,35 @@ export function extractSkills(text: string, limit = 30): string[] {
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([name]) => name);
+}
+
+export function getDegreeSkills(degree: string): string[] {
+  if (!degree) return [];
+  const key = degree.trim().toLowerCase();
+  if (DEGREE_SKILLS[key]) return DEGREE_SKILLS[key];
+  const words = key.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const matched = Object.entries(DEGREE_SKILLS).filter(([degreeKey]) =>
+    words.every((w) => degreeKey.includes(w))
+  );
+  if (matched.length > 0) {
+    const allSkills = new Set<string>();
+    for (const [, skills] of matched) {
+      for (const s of skills) allSkills.add(s);
+    }
+    return [...allSkills].slice(0, 20);
+  }
+  const partial = Object.entries(DEGREE_SKILLS).filter(([degreeKey]) =>
+    words.some((w) => degreeKey.includes(w))
+  );
+  if (partial.length > 0) {
+    const allSkills = new Set<string>();
+    for (const [, skills] of partial) {
+      for (const s of skills) allSkills.add(s);
+    }
+    return [...allSkills].slice(0, 20);
+  }
+  return [];
 }
 
 export interface RoleFamily {
@@ -305,7 +812,6 @@ export function classifyRole(title: string, description = ""): RoleFamily {
     }
   }
   if (bestScore === 0) {
-    // Fall back to a broad family based on seniority language.
     if (/senior|staff|principal|lead/i.test(title)) {
       return ROLE_FAMILIES.find((r) => r.key === "business_operations")!;
     }
@@ -314,101 +820,10 @@ export function classifyRole(title: string, description = ""): RoleFamily {
   return best;
 }
 
-/** Adjacent skill bridge used to give partial credit for transferable skills. */
 export const TRANSFERABLE: Record<string, string[]> = {
   "Automotive Engineering": ["Mechanical Design & CAE", "Manufacturing, Quality & Operations Engineering", "Field Service & Technical Support"],
-  "Vehicle Dynamics": ["Mechanical Design & CAE"],
-  "Powertrain": ["Mechanical Design & CAE", "Manufacturing, Quality & Operations Engineering"],
-  "IC Engines": ["Mechanical Design & CAE", "Field Service & Technical Support"],
-  "EV Technology": ["Mechanical Design & CAE", "Field Service & Technical Support"],
-  CAD: ["Mechanical Design & CAE", "Automotive & EV Engineering"],
-  SolidWorks: ["Mechanical Design & CAE"],
-  CATIA: ["Mechanical Design & CAE", "Automotive & EV Engineering"],
-  MATLAB: ["Data & Business Analysis", "Mechanical Design & CAE"],
-  Manufacturing: ["Manufacturing, Quality & Operations Engineering", "Business, Sales & Operations"],
-  "Quality Control": ["Manufacturing, Quality & Operations Engineering"],
-  "Six Sigma": ["Manufacturing, Quality & Operations Engineering", "Business, Sales & Operations"],
-  "Lean Manufacturing": ["Manufacturing, Quality & Operations Engineering"],
-  "Project Management": ["Business, Sales & Operations", "Manufacturing, Quality & Operations Engineering", "Data & Business Analysis"],
-  Operations: ["Business, Sales & Operations", "Customer & Technical Support"],
-  "Supply Chain": ["Business, Sales & Operations"],
-  Procurement: ["Business, Sales & Operations"],
-  Logistics: ["Business, Sales & Operations"],
-  "Problem Solving": ["Data & Business Analysis", "Software Engineering & QA", "Field Service & Technical Support"],
-  Communication: ["Business, Sales & Operations", "Customer & Technical Support", "Marketing & Creative"],
-  Excel: ["Data & Business Analysis", "Finance, HR & Administration", "Business, Sales & Operations"],
-  SQL: ["Data & Business Analysis"],
-  Python: ["Data & Business Analysis", "Software Engineering & QA"],
-  "Data Analysis": ["Data & Business Analysis", "Business, Sales & Operations", "Marketing & Creative"],
-  "Business Analysis": ["Data & Business Analysis", "Business, Sales & Operations"],
-  "Customer Support": ["Customer & Technical Support", "Business, Sales & Operations"],
-  "Customer Success": ["Business, Sales & Operations", "Customer & Technical Support"],
-  Sales: ["Business, Sales & Operations"],
-  "Business Development": ["Business, Sales & Operations"],
-  "Digital Marketing": ["Marketing & Creative", "Business, Sales & Operations"],
-  SEO: ["Marketing & Creative"],
-  "Content Writing": ["Marketing & Creative"],
-  Accounting: ["Finance, HR & Administration"],
-  Tally: ["Finance, HR & Administration"],
-  Recruitment: ["Finance, HR & Administration"],
-  Payroll: ["Finance, HR & Administration"],
-  "Technical Support": ["Field Service & Technical Support", "Customer & Technical Support", "Software Engineering & QA"],
-  "Manual Testing": ["Software Engineering & QA"],
-  "Automation Testing": ["Software Engineering & QA"],
-  "REST APIs": ["Software Engineering & QA"],
-  JavaScript: ["Software Engineering & QA"],
-  React: ["Software Engineering & QA"],
-  "Node.js": ["Software Engineering & QA"],
 };
 
-/** Degree-to-skills mapping: suggests relevant skills when a user enters their degree.
- * These are commonly associated skills, not guarantees - user always chooses what to add. */
-export const DEGREE_SKILLS: Record<string, string[]> = {
-  "bachelor of technology": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
-  "bachelor of engineering": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
-  "b.tech": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
-  "b.e": ["Problem Solving", "Teamwork", "Communication", "Excel", "Project Management"],
-  "mechanical engineering": ["CAD", "SolidWorks", "AutoCAD", "Manufacturing", "Production Planning", "Quality Control", "GD&T", "Problem Solving"],
-  "computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Problem Solving"],
-  "computer science engineering": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Problem Solving"],
-  "information technology": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Networking", "Technical Support", "Problem Solving"],
-  "electronics": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "Problem Solving"],
-  "electronics and communication": ["Embedded Systems", "Circuit Design", "Arduino", "Raspberry Pi", "IoT", "PLC", "Networking", "Problem Solving"],
-  "electrical": ["PLC", "SCADA", "Power Systems", "Electrical Design", "Maintenance", "Problem Solving"],
-  "civil engineering": ["AutoCAD", "STAAD", "Revit", "Construction Management", "Project Management", "Quality Control", "Problem Solving"],
-  "bachelor of commerce": ["Accounting", "Excel", "Tally", "Financial Analysis", "Banking Operations", "MIS Reporting", "Business Analysis"],
-  "b.com": ["Accounting", "Excel", "Tally", "Financial Analysis", "Banking Operations", "MIS Reporting", "Business Analysis"],
-  "bachelor of business administration": ["Business Analysis", "Project Management", "Operations", "Communication", "Excel", "CRM", "Marketing"],
-  "bba": ["Business Analysis", "Project Management", "Operations", "Communication", "Excel", "CRM", "Marketing"],
-  "master of business administration": ["Project Management", "Business Analysis", "Operations", "Strategic Planning", "Leadership", "Financial Analysis", "Negotiation"],
-  "mba": ["Project Management", "Business Analysis", "Operations", "Strategic Planning", "Leadership", "Financial Analysis", "Negotiation"],
-  "bachelor of science": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication"],
-  "b.sc": ["Data Analysis", "Excel", "Statistics", "Research", "Problem Solving", "Communication"],
-  "bachelor of arts": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving"],
-  "b.a": ["Communication", "Writing", "Research", "Critical Thinking", "Teamwork", "Problem Solving"],
-  "bachelor of computer applications": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "Problem Solving"],
-  "bca": ["Python", "Java", "JavaScript", "SQL", "Git", "Web Development", "REST APIs", "Problem Solving"],
-  "master of computer applications": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Project Management", "Problem Solving"],
-  "mca": ["Python", "Java", "JavaScript", "SQL", "Git", "REST APIs", "Data Analysis", "Project Management", "Problem Solving"],
-  "diploma in mechanical engineering": ["CAD", "AutoCAD", "Manufacturing", "Production Planning", "Quality Control", "Maintenance", "Problem Solving"],
-  "diploma in computer science": ["Python", "Java", "JavaScript", "SQL", "Git", "Technical Support", "Networking", "Problem Solving"],
-  "diploma in electrical engineering": ["PLC", "Electrical Design", "Maintenance", "Power Systems", "Problem Solving"],
-  "diploma in civil engineering": ["AutoCAD", "Construction Management", "Quality Control", "Project Management", "Problem Solving"],
-};
-
-export function getDegreeSkills(degree: string): string[] {
-  if (!degree) return [];
-  const key = degree.trim().toLowerCase();
-  // Exact match first
-  if (DEGREE_SKILLS[key]) return DEGREE_SKILLS[key];
-  // Partial match: check if any key is contained in the degree string
-  for (const [degreeKey, skills] of Object.entries(DEGREE_SKILLS)) {
-    if (key.includes(degreeKey)) return skills;
-  }
-  return [];
-}
-
-/** Preferred-role keyword map used by career discovery. */
 export const CAREER_PATH_KEYWORDS: Record<string, string[]> = {
   "Automotive & EV Engineering": ["automobile", "automotive", "ev", "vehicle", "powertrain", "battery", "engine", "homologation"],
   "Mechanical Design & CAE": ["mechanical", "design", "cad", "cae", "simulation", "thermal", "r&d"],
@@ -447,7 +862,6 @@ export function candidateRoleFamilies(profile: CandidateProfile, prefs?: Candida
   return families;
 }
 
-/** Used only by the UI for empty-state hints, not by the scoring engine. */
 export const BROAD_JOB_CATEGORIES: { label: string; roles: string[] }[] = [
   { label: "Engineering & technical", roles: ["Automobile Engineer", "Mechanical Engineer", "Graduate Engineer Trainee", "Production Engineer", "Quality Engineer", "Maintenance Engineer", "Design / CAD Engineer", "Manufacturing Engineer", "Service Engineer", "Technical Support Engineer", "Field Engineer", "Robotics", "Industrial Engineering"] },
   { label: "IT & software", roles: ["Software Developer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "QA Engineer", "Software Tester", "IT Support", "System Administrator", "Data Analyst", "BI Analyst", "Junior Data Engineer", "AI/ML Intern", "Product Support"] },
@@ -458,7 +872,6 @@ export const BROAD_JOB_CATEGORIES: { label: string; roles: string[] }[] = [
   { label: "Other sectors", roles: ["E-commerce", "Retail", "Hospitality", "Healthcare administration", "Education", "EdTech", "FinTech", "Logistics", "Renewable energy", "Insurance", "Telecom", "Government opportunities", "Apprenticeships", "Graduate programs", "Startup generalist"] },
 ];
 
-/** Adjacent skills that earn partial credit (35%) in the deterministic matcher. */
 export const SKILL_BRIDGES: Record<string, string[]> = {
   CAD: ["SolidWorks", "CATIA", "AutoCAD", "Creo", "NX", "GD&T", "FEA", "CFD"],
   SolidWorks: ["CAD", "CATIA", "Creo", "NX", "GD&T"],
@@ -526,12 +939,4 @@ export const SKILL_BRIDGES: Record<string, string[]> = {
   Communication: ["Customer Support", "Sales", "Negotiation", "Content Writing"],
   "Problem Solving": ["Data Analysis", "Technical Support", "Quality Control"],
 };
-
-export type { JobMatchResult, NormalizedJob };
-
-
-
-
-
-
 

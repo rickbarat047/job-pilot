@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/form-controls";
 import { Textarea } from "@/components/ui/form-controls";
 import { Label } from "@/components/ui/form-controls";
 import { Sparkles, Plus, X } from "lucide-react";
-import { getDegreeSkills } from "@/lib/taxonomy";
+import { getDegreeSkills, DEGREE_SKILLS } from "@/lib/taxonomy";
 export default function CvBuilderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -21,6 +21,16 @@ export default function CvBuilderPage() {
   const [targetRole, setTargetRole] = useState("Software Engineer");
   const [assisting, setAssisting] = useState(false);
   const [generated, setGenerated] = useState<{ pdfPath: string; docxPath: string } | null>(null);
+  const [degreeDropdown, setDegreeDropdown] = useState<string[]>([]);
+
+  const matchingDegrees = useMemo(() => {
+    const input = String(profile.degree ?? "").trim().toLowerCase();
+    if (!input) return [];
+    const words = input.split(/\s+/).filter(Boolean);
+    return Object.keys(DEGREE_SKILLS)
+      .filter((d) => words.every((w) => d.toLowerCase().includes(w)))
+      .slice(0, 10);
+  }, [profile.degree]);
 
   const degreeSkills = useMemo(() => getDegreeSkills(String(profile.degree ?? "")), [profile.degree]);
 
@@ -113,7 +123,7 @@ export default function CvBuilderPage() {
           <div><Label>Email</Label><Input value={String(profile.email ?? "")} onChange={(e) => update("email", e.target.value)} /></div>
           <div><Label>Phone</Label><Input value={String(profile.phone ?? "")} onChange={(e) => update("phone", e.target.value)} /></div>
           <div><Label>City</Label><Input value={String(profile.city ?? "")} onChange={(e) => update("city", e.target.value)} /></div>
-          <div><Label>Degree</Label><Input value={String(profile.degree ?? "")} onChange={(e) => update("degree", e.target.value)} /></div>
+          <div><Label>Degree</Label><div className="relative"><Input value={String(profile.degree ?? "")} onChange={(e) => update("degree", e.target.value)} />{matchingDegrees.length > 0 && <div className="absolute left-0 right-0 mt-1 z-10 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto"><ul className="py-1">{matchingDegrees.map((d) => (<li key={d}><button type="button" onClick={() => { update("degree", d); setDegreeDropdown([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent">{d}</button></li>))}</ul></div>}</div></div>
           <div><Label>University</Label><Input value={String(profile.university ?? "")} onChange={(e) => update("university", e.target.value)} /></div>
           <div><Label>Graduation year</Label><Input value={String(profile.graduationYear ?? "")} onChange={(e) => update("graduationYear", e.target.value)} /></div>
           <div><Label>CGPA / percentage</Label><Input value={String(profile.cgpa ?? "")} onChange={(e) => update("cgpa", e.target.value)} /></div>
