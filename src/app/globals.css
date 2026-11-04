@@ -169,11 +169,22 @@ html.viewport-repaint body {
   .bottom-safe { bottom: env(safe-area-inset-bottom); }
 }
 
-@keyframes sheet-up {
-  from { transform: translateY(24px); opacity: 0.4; }
-  to { transform: translateY(0); opacity: 1; }
+@keyframes marquee-x {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
-.animate-sheet { animation: sheet-up 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-marquee { animation: marquee-x 28s linear infinite; }
+@keyframes wobble-in {
+  0% { transform: scale(0.6) rotate(-8deg); opacity: 0; }
+  60% { transform: scale(1.08) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.animate-wobble { animation: wobble-in 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.animate-rainbow { background-size: 200% 200%; animation: rainbow-shift 6s linear infinite; }
 
 /*
  * Scroll reveals (components/reveal.tsx). The hidden initial state applies
