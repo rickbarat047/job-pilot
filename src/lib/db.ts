@@ -36,7 +36,10 @@ function getPg() {
     pgPool = new Pool({
       connectionString,
       ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
-      max: Number(process.env.DATABASE_POOL_SIZE || 5),
+      max: Number(process.env.DATABASE_POOL_SIZE || 3),
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+      allowExitOnIdle: true,
     });
   }
   return pgPool;

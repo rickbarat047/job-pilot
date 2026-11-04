@@ -82,7 +82,8 @@ export async function createSession(userId: string): Promise<void> {
   await run("INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)", [
     newId("ses"), userId, tokenHash, expires.toISOString(), now.toISOString(),
   ]);
-  await run("DELETE FROM sessions WHERE expires_at <= ?", [now.toISOString()]);
+  // Clean up expired sessions lazily — don't block the login response.
+  void run("DELETE FROM sessions WHERE expires_at <= ?", [now.toISOString()]).catch(() => {});
   const jar = await cookies();
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,

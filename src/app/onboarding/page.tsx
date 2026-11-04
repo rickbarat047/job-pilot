@@ -88,9 +88,9 @@ export default function OnboardingPage() {
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto min-h-dvh max-w-3xl px-4 py-8">
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-semibold">Set up JobPilot</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Set up JobPilot</h1>
         <p className="text-muted-foreground">Step {step + 1} of {STEPS.length}: {STEPS[step]}</p>
         <Progress value={progress} className="mt-3" />
       </div>
@@ -111,9 +111,12 @@ export default function OnboardingPage() {
               <CardDescription>PDF, DOC, DOCX, TXT, or an image. We extract facts only; nothing is invented.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <input type="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" onChange={(e) => e.target.files?.[0] && uploadCv(e.target.files[0])} />
-              <p className="text-xs text-muted-foreground">Drag and drop is supported by your browser's file picker. Max 10 MB.</p>
-              <Button onClick={() => setStep(1)}>Continue with uploaded CV</Button>
+              <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-background/40 px-5 py-7 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/30">
+                <input type="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => e.target.files?.[0] && uploadCv(e.target.files[0])} />
+                <span>Choose a CV file (PDF, DOC, DOCX, TXT or image)</span>
+              </label>
+              <Button onClick={() => setStep(1)}>Continue to profile details</Button>
+              <p className="text-xs text-muted-foreground">Nothing uploaded yet? Continue and add your CV later from your profile.</p>
             </CardContent>
           </Card>
           <Card>
@@ -153,7 +156,7 @@ export default function OnboardingPage() {
             <div><Label>Summary</Label><Textarea value={String(profile.summary ?? "")} onChange={(e) => setProfile({ ...profile, summary: e.target.value })} /></div>
             <div><Label>Skills (comma separated)</Label><Input value={Array.isArray(profile.skills) ? profile.skills.map((s: { name: string }) => s.name).join(", ") : ""} onChange={(e) => setProfile({ ...profile, skills: e.target.value.split(",").map((s) => ({ name: s.trim() })).filter((s) => s.name) })} /></div>
             <div><Label>Languages (comma separated)</Label><Input value={Array.isArray(profile.languages) ? profile.languages.join(", ") : ""} onChange={(e) => setProfile({ ...profile, languages: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} /></div>
-            <div className="flex justify-between">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <Button variant="outline" onClick={() => setStep(0)}>Back</Button>
               <Button onClick={async () => { await saveProfile(); setStep(2); }}>Save and continue</Button>
             </div>
@@ -177,7 +180,7 @@ export default function OnboardingPage() {
               <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(preferences.paidInternship)} onChange={(e) => setPreferences({ ...preferences, paidInternship: e.target.checked })} /> Paid internships</label>
               <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(preferences.unpaidInternship)} onChange={(e) => setPreferences({ ...preferences, unpaidInternship: e.target.checked })} /> Unpaid internships</label>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button onClick={async () => { await savePreferences(); setStep(3); }}>Save and continue</Button>
             </div>
@@ -207,7 +210,7 @@ export default function OnboardingPage() {
                 {label}
               </label>
             ))}
-            <div className="flex justify-between">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
               <Button onClick={async () => { await savePreferences(); setStep(4); }}>Save and continue</Button>
             </div>
@@ -229,7 +232,7 @@ export default function OnboardingPage() {
               </Select>
             </div>
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(permissions.demoMode)} onChange={(e) => setPermissions({ ...permissions, demoMode: e.target.checked })} /> Demo mode (no real submissions or emails)</label>
-            <div className="flex justify-between">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
               <Button onClick={savePermissions} disabled={loading}>{loading ? "Saving…" : "Finish setup"}</Button>
             </div>

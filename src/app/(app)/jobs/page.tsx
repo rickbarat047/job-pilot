@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Search, SlidersHorizontal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/form-controls";
-import { Select } from "@/components/ui/form-controls";
-import { Progress } from "@/components/ui/misc";
+import { Input, Select } from "@/components/ui/form-controls";
 import { EmptyState } from "@/components/empty-state";
+import { JobCard } from "@/components/ui/job-card";
+import { cn } from "@/lib/utils";
 
 interface JobItem {
   job: { id: string; title: string; companyName: string; location: string; remoteStatus: string; employmentType: string; salaryText?: string | null; source: string };
@@ -15,6 +16,14 @@ interface JobItem {
   savedState: string | null;
   applicationId: string | null;
   applicationState: string | null;
+}
+
+interface FilterOverrides {
+  query?: string;
+  source?: string;
+  remote?: string;
+  sort?: string;
+  minScore?: string;
 }
 
 export default function JobsPage() {
@@ -26,24 +35,44 @@ export default function JobsPage() {
   const [remote, setRemote] = useState("");
   const [sort, setSort] = useState("match");
   const [minScore, setMinScore] = useState("");
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  async function load() {
+  async function load(overrides: FilterOverrides = {}) {
     setLoading(true);
     const params = new URLSearchParams();
-    if (query) params.set("query", query);
-    if (source) params.set("source", source);
-    if (remote) params.set("remote", remote);
-    if (sort) params.set("sort", sort);
-    if (minScore) params.set("minScore", minScore);
+    const nextQuery = overrides.query ?? query;
+    const nextSource = overrides.source ?? source;
+    const nextRemote = overrides.remote ?? remote;
+    const nextSort = overrides.sort ?? sort;
+    const nextMinScore = overrides.minScore ?? minScore;
+    if (nextQuery) params.set("query", nextQuery);
+    if (nextSource) params.set("source", nextSource);
+    if (nextRemote) params.set("remote", nextRemote);
+    if (nextSort) params.set("sort", nextSort);
+    if (nextMinScore) params.set("minScore", nextMinScore);
     params.set("limit", "60");
-    const response = await fetch(`/api/jobs?${params.toString()}`);
-    const data = await response.json();
-    setJobs(data.items ?? []);
-    setTotal(data.total ?? 0);
-    setLoading(false);
+    try {
+      const response = await fetch(`/api/jobs?${params.toString()}`);
+      const data = await response.json();
+      setJobs(data.items ?? []);
+      setTotal(data.total ?? 0);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const initialQuery = new URLSearchParams(window.location.search).get("query") ?? "";
+    if (initialQuery) {
+      setQuery(initialQuery);
+      void load({ query: initialQuery });
+    } else {
+      void load();
+    }
+    // Intentionally run once: subsequent loads are user-driven.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function toggleSave(jobId: string, state: "saved" | "shortlisted" | null) {
     await fetch(`/api/jobs/${jobId}/save`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ state }) });
@@ -56,46 +85,123 @@ export default function JobsPage() {
     await load();
   }
 
+  function clearFilters() {
+    setSource("");
+    setRemote("");
+    setMinScore("");
+    setSort("match");
+    void load({ source: "", remote: "", minScore: "", sort: "match" });
+  }
+
+  const filterCount = [source, remote, minScore, sort !== "match" ? sort : ""].filter(Boolean).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-semibold">Job discovery</h1>
-          <p className="text-muted-foreground">{total} roles matched to your profile.</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Job discovery</h1>
+          <p className="text-sm text-muted-foreground">{total} roles matched to your profile.</p>
         </div>
-        <Button onClick={runDiscovery} disabled={loading}>{loading ? "Working…" : "Run discovery"}</Button>
+        <Button onClick={runDiscovery} disabled={loading} className="w-full sm:w-auto">
+          {loading ? "Working…" : "Run discovery"}
+        </Button>
       </div>
 
-      <Card>
-        <CardContent className="grid gap-3 p-4 md:grid-cols-5">
-          <Input placeholder="Search title, company, skill…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <Input placeholder="Source" value={source} onChange={(e) => setSource(e.target.value)} />
-          <Select value={remote} onChange={(e) => setRemote(e.target.value)}>
-            <option value="">Any work mode</option>
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">On-site</option>
-          </Select>
-          <Select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="match">Sort by match</option>
-            <option value="newest">Sort by newest</option>
-            <option value="salary">Sort by salary</option>
-          </Select>
-          <div className="flex gap-2">
-            <Input placeholder="Min score" value={minScore} onChange={(e) => setMinScore(e.target.value)} />
-            <Button onClick={load}>Filter</Button>
-          </div>
+      <Card className="sticky top-14 z-20 -mx-4 rounded-none border-x-0 bg-background/95 shadow-none backdrop-blur-xl md:static md:mx-0 md:rounded-2xl md:border-x md:bg-card md:shadow-sm">
+        <CardContent className="p-3 sm:p-4">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void load();
+            }}
+            className="space-y-3"
+          >
+            <div className="flex items-stretch gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="pl-9"
+                  placeholder="Search title, company, skill…"
+                  aria-label="Search jobs"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 md:hidden"
+                onClick={() => setFiltersOpen((value) => !value)}
+                aria-expanded={filtersOpen}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+                {filterCount > 0 ? (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                    {filterCount}
+                  </span>
+                ) : null}
+              </Button>
+              <Button type="submit" className="hidden shrink-0 md:inline-flex">Apply</Button>
+            </div>
+
+            <div className={cn("grid gap-2 sm:grid-cols-2", filtersOpen ? "grid" : "hidden md:grid md:grid-cols-4")}>
+              <Input
+                placeholder="Source (e.g. greenhouse)"
+                value={source}
+                onChange={(event) => setSource(event.target.value)}
+                aria-label="Filter by source"
+              />
+              <Select value={remote} onChange={(event) => setRemote(event.target.value)} aria-label="Work mode">
+                <option value="">Any work mode</option>
+                <option value="remote">Remote</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="onsite">On-site</option>
+              </Select>
+              <Select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort jobs">
+                <option value="match">Sort by match</option>
+                <option value="newest">Sort by newest</option>
+                <option value="salary">Sort by salary</option>
+              </Select>
+              <Input
+                placeholder="Minimum score"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={100}
+                value={minScore}
+                onChange={(event) => setMinScore(event.target.value)}
+                aria-label="Minimum match score"
+              />
+            </div>
+
+            {filterCount > 0 ? (
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>{filterCount} filter{filterCount === 1 ? "" : "s"} active</span>
+                <button type="button" onClick={clearFilters} className="font-medium text-primary hover:underline">
+                  Clear all
+                </button>
+              </div>
+            ) : null}
+          </form>
         </CardContent>
       </Card>
 
       {loading ? (
-        <div className="grid gap-4">
-          {[0, 1, 2].map((index) => (
+        <div className="grid gap-3">
+          {[0, 1, 2, 3].map((index) => (
             <Card key={index} className="animate-pulse">
-              <CardContent className="p-5">
-                <div className="h-5 w-2/3 rounded bg-muted" />
-                <div className="mt-2 h-4 w-1/2 rounded bg-muted" />
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex gap-3">
+                  <div className="h-11 w-11 shrink-0 rounded-xl bg-muted" />
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 w-3/4 rounded bg-muted" />
+                    <div className="mt-2 h-3 w-1/2 rounded bg-muted" />
+                  </div>
+                  <div className="h-7 w-14 rounded-full bg-muted" />
+                </div>
                 <div className="mt-4 h-2 rounded bg-muted" />
+                <div className="mt-3 h-10 rounded bg-muted" />
               </CardContent>
             </Card>
           ))}
@@ -105,46 +211,87 @@ export default function JobsPage() {
         <EmptyState title="No jobs found yet" description="Run discovery or adjust your filters to find opportunities." action={<Button onClick={runDiscovery}>Run discovery</Button>} />
       ) : null}
 
-      <div className="grid gap-4">
-        {jobs.map((item) => (
-          <Card key={item.job.id}>
-            <CardContent className="p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-sm font-semibold uppercase">
-                    {item.job.companyName?.slice(0, 1) || "J"}
-                  </span>
-                  <div className="min-w-0">
-                    <Link href={`/jobs/${item.job.id}`} className="break-words font-display text-lg font-semibold hover:text-primary">{item.job.title}</Link>
-                    <div className="break-words text-sm text-muted-foreground">{item.job.companyName} · {item.job.location} · {item.job.employmentType}</div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge variant="secondary">{item.job.source}</Badge>
-                    <Badge variant="outline">{item.job.remoteStatus}</Badge>
-                    {item.job.salaryText ? <Badge variant="outline">{item.job.salaryText}</Badge> : null}
-                    {item.savedState === "shortlisted" ? <Badge variant="accent">Shortlisted</Badge> : null}
-                    {item.applicationState ? <Badge variant="success">{item.applicationState}</Badge> : null}
+      <div className="grid gap-3">
+        <AnimatePresence>
+          {expandedJobId ? (
+            <motion.div
+              key={`expanded-${expandedJobId}`}
+              layoutId={`job-${expandedJobId}`}
+              initial={{ opacity: 1 }}
+              className="min-w-0 rounded-3xl border border-border bg-card p-6 shadow-lg sm:p-8"
+            >
+              <button onClick={() => setExpandedJobId(null)} className="mb-3 text-xs font-medium text-primary hover:underline">← Back to list</button>
+              {/* Expanded content for the selected job */}
+              {(() => {
+                const item = jobs.find((j) => j.job.id === expandedJobId);
+                if (!item) return null;
+                return (
+                  <div className="space-y-4">
+                    <h2 className="font-display text-xl font-semibold sm:text-2xl">{item.job.title}</h2>
+                    <div className="text-sm text-muted-foreground">{item.job.companyName} · {item.job.location} · {item.job.employmentType}</div>
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${item.match.overallScore}%` }} />
+                    </div>
+                    <p className="text-sm">{item.match.recommendedAction || "No recommendation yet."}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium">via {item.job.source}</span>
+                      {item.match.overallScore >= 75 && <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">Strong match</span>}
+                      {item.match.overallScore < 55 && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-700">Thin match</span>}
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <Link href={`/jobs/${item.job.id}`} className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">View full details</Link>
+                      <Button size="sm" variant="outline" onClick={() => setExpandedJobId(null)}>Back</Button>
+                    </div>
                   </div>
-                </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-display text-2xl font-semibold">{item.match.overallScore}%</div>
-                  <div className="text-xs text-muted-foreground">{item.match.recommendedAction}</div>
-                </div>
-              </div>
-              <Progress value={item.match.overallScore} className="mt-4" />
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link href={`/jobs/${item.job.id}`} className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-transparent px-3 text-xs font-medium hover:bg-muted">View</Link>
-                <Button size="sm" variant="secondary" onClick={() => toggleSave(item.job.id, item.savedState === "shortlisted" ? "saved" : "shortlisted")}>
-                  {item.savedState === "shortlisted" ? "Saved" : "Shortlist"}
-                </Button>
-                {item.applicationId ? <Link href={`/applications/${item.applicationId}`} className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-medium hover:bg-muted">Application</Link> : null}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                );
+              })()}
+            </motion.div>
+          ) : null}
+          {jobs.map((item) => (
+            <motion.div
+              key={item.job.id}
+              layoutId={`job-${item.job.id}`}
+              initial={{ opacity: 1 }}
+              onClick={() => setExpandedJobId(item.job.id)}
+              className="cursor-pointer"
+            >
+              <JobCard
+                job={{
+                  id: item.job.id,
+                  title: item.job.title,
+                  companyName: item.job.companyName,
+                  location: item.job.location,
+                  remoteStatus: item.job.remoteStatus,
+                  employmentType: item.job.employmentType,
+                  salaryText: item.job.salaryText,
+                  source: item.job.source,
+                  description: null,
+                }}
+                score={item.match.overallScore}
+                action={
+                  <>
+                    <Link href={`/jobs/${item.job.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                      View role
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSave(item.job.id, item.savedState === "shortlisted" ? "saved" : "shortlisted"); }}
+                    >
+                      {item.savedState === "shortlisted" ? "Saved" : "Shortlist"}
+                    </Button>
+                    {item.applicationId ? (
+                      <Link href={`/applications/${item.applicationId}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+                        View application
+                      </Link>
+                    ) : null}
+                  </>
+                }
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
-
-

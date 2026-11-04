@@ -11,7 +11,10 @@ import { createNotification } from "@/lib/repositories";
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
+    if (!body || typeof body.url !== "string" || !body.url.trim()) {
+      return NextResponse.json({ error: "A job URL is required, for example https://company.com/careers/role." }, { status: 400 });
+    }
     const job = await importManualJob(body);
     const result = await upsertJob(job);
     const profile = await getProfile(user.id);

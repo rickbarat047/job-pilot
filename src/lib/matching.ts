@@ -114,11 +114,11 @@ function educationFit(profile: CandidateProfile, job: NormalizedJob): { score: n
   return { score: 0.75, notes, disqualifiers };
 }
 
-function skillFit(profile: CandidateProfile, job: NormalizedJob): { score: number; strengths: string[]; gaps: string[] } {
+function skillFit(profile: CandidateProfile, job: NormalizedJob): { score: number; strengths: string[]; gaps: string[]; evaluated: number } {
   const candidate = profileSkillSet(profile);
   const jobSkills = job.skillsRequired.length ? job.skillsRequired : extractSkills(job.description, 20);
   if (jobSkills.length === 0) {
-    return { score: 0.55, strengths: ["No specific technical skills listed; generalist profile considered"], gaps: [] };
+    return { score: 0.55, strengths: ["No specific technical skills listed; generalist profile considered"], gaps: [], evaluated: 0 };
   }
   const titleSkills = new Set(extractSkills(job.title, 10));
   let totalWeight = 0;
@@ -147,6 +147,7 @@ function skillFit(profile: CandidateProfile, job: NormalizedJob): { score: numbe
     score,
     strengths: strengths.slice(0, 8),
     gaps: gaps.slice(0, 8),
+    evaluated: jobSkills.length,
   };
 }
 
@@ -154,11 +155,16 @@ function experienceFit(profile: CandidateProfile, job: NormalizedJob): { score: 
   const years = candidateYears(profile);
   const parsed = parseExperience(job.description, job.title);
   const min = parsed.minYears;
-  const fresher = /intern|trainee|apprentice|graduate|fresher/i.test(`${job.title} ${job.employmentType}`);
+  const entryLevelTitle = /intern|trainee|apprentice|graduate|fresher/i.test(`${job.title} ${job.employmentType}`);
+  const entryLevelType = job.employmentType === "internship" || job.employmentType === "apprenticeship" || job.employmentType === "trainee";
   if (min === null) {
-    return { score: fresher ? 1 : 0.65, label: "Not specified", disqualifier: null, fresherFriendly: fresher };
+    return { score: entryLevelTitle ? 1 : 0.65, label: "Not specified", disqualifier: null, fresherFriendly: entryLevelTitle };
   }
-  if (fresher || job.employmentType === "internship" || job.employmentType === "apprenticeship" || job.employmentType === "trainee") {
+  // A mislabeled "trainee" employment type must not hide a senior requirement.
+  // Only treat an entry-level label as a fresher override when the title is
+  // not senior and the posting actually asks for one year or less.
+  const seniorTitle = /\b(senior|sr\.?|lead|principal|staff|manager|director|head|vp|architect)\b/i.test(job.title);
+  if (!seniorTitle && min <= 1 && (entryLevelTitle || entryLevelType)) {
     return { score: years <= 2 ? 1 : 0.8, label: parsed.label ?? `${min}+ years`, disqualifier: null, fresherFriendly: true };
   }
   const gap = min - years;
@@ -301,7 +307,16 @@ export function matchJob(profile: CandidateProfile, prefs: CandidatePreferences,
     flexibility.score * weights.flexibility +
     freshness.score * weights.freshness;
 
-  const finalScore = Math.max(0, Math.min(100, Math.round(overall)));
+  // A role that lists skills and shares none of them (directly or through a
+  // bridge) is not a strong fit, even if location, salary and freshness are
+  // perfect. A single loosely bridged skill is also thin evidence when the
+  // role is outside the candidate's preferred career families. Without these
+  // caps, unrelated remote roles such as "Freelance Writer" could score above
+  // 80 for an engineering profile.
+  const skillMismatch = skills.score === 0;
+  const thinSkillEvidence = skills.evaluated <= 1 && career.score <= 0.72;
+  const relevanceCap = skillMismatch ? 45 : thinSkillEvidence ? 60 : 100;
+  const finalScore = Math.max(0, Math.min(100, Math.round(Math.min(overall, relevanceCap))));
   const missingRequirements = dedupeStrings([
     ...skills.gaps.map((g) => `Skill gap: ${g}`),
     ...(education.notes.filter((n) => /prefers|partial|verify|equivalence/i.test(n)) ?? []),
@@ -319,7 +334,7 @@ export function matchJob(profile: CandidateProfile, prefs: CandidatePreferences,
     `${career.note}.`,
     skills.strengths.length
       ? `Your profile overlaps on ${skills.strengths.length} of ${job.skillsRequired.length || skills.strengths.length} detected skills, including ${skills.strengths.slice(0, 4).join(", ")}.`
-      : "No direct skill overlap was detected from the job description.",
+      : "No direct skill overlap was detected from the job description, so the match score is capped.",
     education.notes[0] ? `${education.notes[0]}.` : "",
     experience.label ? `Experience requested: ${experience.label}; you have about ${candidateYears(profile)} year${candidateYears(profile) === 1 ? "" : "s"}.` : "",
     location.note ? `${location.note}.` : "",

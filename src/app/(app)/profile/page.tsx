@@ -67,20 +67,20 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/[0.08] via-card to-accent/20 px-6 py-7 shadow-sm sm:px-8">
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/[0.08] via-card to-accent/20 px-5 py-6 shadow-sm sm:px-8 sm:py-7">
         <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-accent/30 blur-3xl" />
-        <div className="relative flex flex-wrap items-center justify-between gap-5">
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="grid h-16 w-16 place-items-center rounded-2xl bg-primary text-xl font-semibold text-primary-foreground shadow-sm">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary text-lg font-semibold text-primary-foreground shadow-sm sm:h-16 sm:w-16 sm:text-xl">
               {initials}
             </span>
-            <div>
-              <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Career profile</h1>
+            <div className="min-w-0">
+              <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">Career profile</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Your single source of truth. Every tailored CV, match score and application is built from this.
               </p>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-2 w-40 overflow-hidden rounded-full bg-muted">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div className="h-2 w-32 overflow-hidden rounded-full bg-muted sm:w-40">
                   <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completeness}%` }} />
                 </div>
                 <span className="text-xs text-muted-foreground">{completeness}% complete</span>
@@ -88,7 +88,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href="/cv-builder" className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
+            <a href="/cv-builder" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 sm:h-10">
               <Sparkles className="mr-2 h-4 w-4" /> Build an AI CV
             </a>
           </div>
@@ -104,7 +104,7 @@ export default function ProfilePage() {
           <Upload className="h-5 w-5 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-background/40 px-6 py-8 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/30">
+          <label className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-background/40 px-5 py-7 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/30 sm:px-6 sm:py-8">
             <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
             <FileText className="h-5 w-5" />
             {uploading ? "Parsing your CV…" : "Choose a file or drag it here"}

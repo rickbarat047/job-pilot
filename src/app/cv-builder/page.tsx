@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,14 +22,13 @@ export default function CvBuilderPage() {
   const [targetRole, setTargetRole] = useState("Software Engineer");
   const [assisting, setAssisting] = useState(false);
   const [generated, setGenerated] = useState<{ pdfPath: string; docxPath: string } | null>(null);
-  const [degreeDropdown, setDegreeDropdown] = useState<string[]>([]);
 
   const matchingDegrees = useMemo(() => {
     const input = String(profile.degree ?? "").trim().toLowerCase();
     if (!input) return [];
     const words = input.split(/\s+/).filter(Boolean);
     return Object.keys(DEGREE_SKILLS)
-      .filter((d) => words.every((w) => d.toLowerCase().includes(w)))
+      .filter((d) => d.toLowerCase() !== input && words.every((w) => d.toLowerCase().includes(w)))
       .slice(0, 10);
   }, [profile.degree]);
 
@@ -95,7 +95,17 @@ export default function CvBuilderPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <div className="min-h-dvh">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-xl">
+        <Link href="/profile" className="inline-flex items-center gap-2 rounded-lg px-2 py-2 -ml-2 text-sm text-muted-foreground hover:text-foreground">
+          <span aria-hidden>←</span> Back to profile
+        </Link>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">J</div>
+          <span className="font-display text-base font-semibold">JobPilot</span>
+        </div>
+      </header>
+      <main className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:py-8">
       <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/[0.08] via-card to-accent/20 px-6 py-7 shadow-sm sm:px-8">
         <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-accent/30 blur-3xl" />
         <div className="relative">
@@ -123,7 +133,7 @@ export default function CvBuilderPage() {
           <div><Label>Email</Label><Input value={String(profile.email ?? "")} onChange={(e) => update("email", e.target.value)} /></div>
           <div><Label>Phone</Label><Input value={String(profile.phone ?? "")} onChange={(e) => update("phone", e.target.value)} /></div>
           <div><Label>City</Label><Input value={String(profile.city ?? "")} onChange={(e) => update("city", e.target.value)} /></div>
-          <div><Label>Degree</Label><div className="relative"><Input value={String(profile.degree ?? "")} onChange={(e) => update("degree", e.target.value)} />{matchingDegrees.length > 0 && <div className="absolute left-0 right-0 mt-1 z-10 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto"><ul className="py-1">{matchingDegrees.map((d) => (<li key={d}><button type="button" onClick={() => { update("degree", d); setDegreeDropdown([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent">{d}</button></li>))}</ul></div>}</div></div>
+          <div><Label>Degree</Label><div className="relative"><Input value={String(profile.degree ?? "")} onChange={(e) => update("degree", e.target.value)} />{matchingDegrees.length > 0 && <div className="absolute left-0 right-0 mt-1 z-10 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto"><ul className="py-1">{matchingDegrees.map((d) => (<li key={d}><button type="button" onClick={() => { update("degree", d); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent">{d}</button></li>))}</ul></div>}</div></div>
           <div><Label>University</Label><Input value={String(profile.university ?? "")} onChange={(e) => update("university", e.target.value)} /></div>
           <div><Label>Graduation year</Label><Input value={String(profile.graduationYear ?? "")} onChange={(e) => update("graduationYear", e.target.value)} /></div>
           <div><Label>CGPA / percentage</Label><Input value={String(profile.cgpa ?? "")} onChange={(e) => update("cgpa", e.target.value)} /></div>
@@ -193,7 +203,10 @@ export default function CvBuilderPage() {
       <div className="rounded-2xl border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
         JobPilot uses only the details you enter. It will not invent employers, degrees, certifications or skills. Review the AI-assisted summary before generating.
       </div>
-      <Button onClick={generate} disabled={loading} className="w-full" size="lg">{loading ? "Generating CV…" : "Generate AI CV"}</Button>
+      <div className="sticky bottom-0 z-20 -mx-4 border-t border-border bg-background/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <Button onClick={generate} disabled={loading} className="w-full" size="lg">{loading ? "Generating CV…" : "Generate AI CV"}</Button>
+      </div>
     </main>
+    </div>
   );
 }

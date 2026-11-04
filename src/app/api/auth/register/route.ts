@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: error.status });
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid input." }, { status: 400 });
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to register." }, { status: 400 });
+    console.error("Registration failed:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Unable to create your account. Please try again." }, { status: 400 });
   }
 }

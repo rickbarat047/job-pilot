@@ -16,8 +16,9 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("Health check failed:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { status: "error", database: "unavailable", error: error instanceof Error ? error.message : "Unknown error" },
+      { status: "error", database: "unavailable" },
       { status: 503 },
     );
   }

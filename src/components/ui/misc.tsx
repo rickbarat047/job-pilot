@@ -18,7 +18,7 @@ export function Skeleton({ className }: { className?: string }) {
 }
 
 export function Checkbox({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input type="checkbox" className={cn("h-4 w-4 rounded border-input text-primary focus:ring-ring", className)} {...props} />;
+  return <input type="checkbox" className={cn("checkbox", className)} {...props} />;
 }
 
 export function Switch({ checked, onCheckedChange, className }: { checked?: boolean; onCheckedChange?: (value: boolean) => void; className?: string }) {

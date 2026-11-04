@@ -20,7 +20,7 @@ async function findCompanyForJob(job: NormalizedJob): Promise<string | null> {
   if (existing) return existing.id;
   const id = newId("cmp");
   const now = nowIso();
-  run(
+  await run(
     `INSERT INTO companies (id, name, slug, website, careers_url, industry, location, source, verified, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'discovered', 0, ?, ?)`,
     [id, job.companyName, job.companySlug, job.companyWebsite ?? null, job.careerPageUrl ?? null, null, job.city ?? job.location, now, now],
@@ -32,7 +32,7 @@ export async function upsertJob(job: NormalizedJob): Promise<UpsertJobResult> {
   const now = nowIso();
   const existingById = await get<{ id: string }>("SELECT id FROM jobs WHERE id = ?", [job.id]);
   if (existingById) {
-    run(
+    await run(
       `UPDATE jobs SET title=?, company_name=?, description=?, description_html=?, location=?, city=?, country=?,
        remote_status=?, employment_type=?, experience_required=?, education_requirements=?, skills_required=?,
        salary_min=?, salary_max=?, salary_currency=?, salary_text=?, application_url=?, application_method=?,
@@ -46,14 +46,14 @@ export async function upsertJob(job: NormalizedJob): Promise<UpsertJobResult> {
   }
   const existingByFingerprint = await get<{ id: string }>("SELECT id FROM jobs WHERE fingerprint = ?", [job.fingerprint]);
   if (existingByFingerprint) {
-    run(
+    await run(
       `UPDATE jobs SET last_verified_at=?, status='active', reliability=CASE WHEN reliability > ? THEN reliability ELSE ? END, updated_at=? WHERE id=?`,
       [now, job.reliability, job.reliability, now, existingByFingerprint.id],
     );
     return { id: existingByFingerprint.id, isNew: false };
   }
   const companyId = await findCompanyForJob(job);
-  run(
+  await run(
     `INSERT INTO jobs (id, title, company_id, company_name, company_website, career_page_url, description, description_html,
       location, city, country, remote_status, employment_type, experience_required, education_requirements, skills_required,
       salary_min, salary_max, salary_currency, salary_text, application_url, application_method, source, source_job_id,
@@ -212,6 +212,36 @@ export async function runDiscovery(userId: string, options: DiscoveryOptions = {
 
 export function createApplicationDraft(userId: string, jobId: string, pkg: unknown) {
   return { userId, jobId, pkg };
+}
+
+/**
+ * Re-run the matcher for every stored job match for a user. Discovery only
+ * scores the jobs a source returned in that run, so preferences and matcher
+ * upgrades would otherwise leave stale scores on older jobs.
+ */
+export async function rescoreMatches(userId: string): Promise<number> {
+  const profile = await getProfile(userId);
+  const prefs = await getPreferences(userId);
+  const rows = await all<{ job_id: string }>("SELECT job_id FROM job_matches WHERE user_id = ?", [userId]);
+  let rescored = 0;
+  for (const row of rows) {
+    const job = await getJobById(row.job_id);
+    if (!job) continue;
+    const result = matchJob(profile, prefs, job);
+    await run(
+      `UPDATE job_matches SET overall_score=?, skill_score=?, education_score=?, experience_score=?, career_score=?,
+       location_score=?, salary_score=?, flexibility_score=?, freshness_score=?, strengths=?, gaps=?,
+       missing_requirements=?, disqualifiers=?, explanation=?, recommended_action=?, qualified=?, role_family=?, updated_at=?
+       WHERE user_id=? AND job_id=?`,
+      [result.overallScore, result.skillScore, result.educationScore, result.experienceScore, result.careerScore,
+        result.locationScore, result.salaryScore, result.flexibilityScore, result.freshnessScore,
+        JSON.stringify(result.strengths), JSON.stringify(result.gaps), JSON.stringify(result.missingRequirements),
+        JSON.stringify(result.disqualifiers), result.explanation, result.recommendedAction, result.qualified ? 1 : 0,
+        result.roleFamily, nowIso(), userId, row.job_id],
+    );
+    rescored++;
+  }
+  return rescored;
 }
 
 export { applicationDuplicateKey };

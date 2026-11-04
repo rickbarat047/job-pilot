@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  serverExternalPackages: ["unpdf", "mammoth", "pdf-lib", "docx", "nodemailer", "word-extractor", "pg", "@supabase/supabase-js", "tesseract.js", "@napi-rs/canvas", "pdfjs-dist"],
+  serverExternalPackages: ["unpdf", "mammoth", "pdf-lib", "docx", "nodemailer", "word-extractor", "pg", "@supabase/supabase-js", "tesseract.js", "@napi-rs/canvas", "pdfjs-dist", "imapflow", "mailparser"],
   experimental: {
     serverActions: {
       bodySizeLimit: "12mb",

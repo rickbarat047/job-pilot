@@ -45,4 +45,47 @@ describe("matchJob", () => {
     const result = matchJob(profile, prefs, baseJob({ title: "Business Analyst", description: "Business Analyst role for any graduate with Excel and communication.", skillsRequired: ["Excel", "Communication"], educationRequirements: "Any graduate" }));
     expect(result.overallScore).toBeGreaterThan(0);
   });
+
+  it("caps an unrelated role with zero skill overlap even when location and salary fit", () => {
+    const result = matchJob(profile, prefs, baseJob({
+      title: "Freelance Writer",
+      description: "Write and edit articles. Requires SEO copywriting, content strategy and editorial research.",
+      skillsRequired: ["SEO Copywriting", "Content Strategy", "Editorial Research"],
+      location: "Worldwide",
+      city: "",
+      country: "Worldwide",
+      remoteStatus: "remote",
+      salaryMin: 50,
+      salaryMax: 75,
+      salaryCurrency: "USD",
+      salaryText: "$50-$75 /hour",
+    }));
+    expect(result.overallScore).toBeLessThanOrEqual(45);
+    expect(result.recommendedAction).toMatch(/low fit/i);
+  });
+
+  it("caps a role whose only skill signal is one loosely bridged skill", () => {
+    const result = matchJob(profile, prefs, baseJob({
+      title: "Freelance Writer",
+      description: "Write articles. Content writing experience preferred.",
+      skillsRequired: ["Content Writing"],
+      location: "Worldwide",
+      city: "",
+      country: "Worldwide",
+      remoteStatus: "remote",
+    }));
+    expect(result.overallScore).toBeLessThanOrEqual(60);
+  });
+
+  it("does not let a trainee label hide a senior experience requirement", () => {
+    const result = matchJob(profile, prefs, baseJob({
+      title: "Lead - Customer Success",
+      description: "Lead the customer success team. Requires 7-10 years of experience.",
+      employmentType: "trainee",
+      skillsRequired: ["Customer Success", "Communication"],
+    }));
+    expect(result.qualified).toBe(false);
+    expect(result.experienceScore).toBeLessThanOrEqual(20);
+    expect(result.recommendedAction).toMatch(/skip/i);
+  });
 });

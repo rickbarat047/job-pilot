@@ -15,8 +15,9 @@ export async function importManualJob(input: ManualJobInput) {
   let company = input.companyName?.trim() ?? "";
   let description = input.description?.trim() ?? "";
   let location = input.location?.trim() ?? "";
-  let finalUrl = input.url.trim();
+  let finalUrl = (input.url ?? "").trim();
 
+  if (!finalUrl) throw new Error("A job URL is required.");
   if (!/^https?:\/\//i.test(finalUrl)) throw new Error("Job URL must start with http:// or https://.");
 
   if (!title || !description) {

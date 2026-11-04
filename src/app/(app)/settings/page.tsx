@@ -132,7 +132,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold">Settings</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Settings</h1>
         <p className="text-muted-foreground">Control what JobPilot may do, and connect the services you trust.</p>
       </div>
 
@@ -151,8 +151,8 @@ export default function SettingsPage() {
               <option value="4">4 — Rule-based auto-apply</option>
             </Select>
           </div>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(permissions.demoMode)} onChange={(e) => setPermissions({ ...permissions, demoMode: e.target.checked })} /> Demo mode (simulate submissions, never contact employers)</label>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(permissions.allowDuplicateApplications)} onChange={(e) => setPermissions({ ...permissions, allowDuplicateApplications: e.target.checked })} /> Allow duplicate applications</label>
+          <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(permissions.demoMode)} onChange={(e) => setPermissions({ ...permissions, demoMode: e.target.checked })} /> Demo mode (simulate submissions, never contact employers)</label>
+          <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(permissions.allowDuplicateApplications)} onChange={(e) => setPermissions({ ...permissions, allowDuplicateApplications: e.target.checked })} /> Allow duplicate applications</label>
           <Button onClick={savePermissions} disabled={saving === "permissions"}>{saving === "permissions" ? "Saving…" : "Save permissions"}</Button>
         </CardContent>
       </Card>
@@ -163,9 +163,9 @@ export default function SettingsPage() {
           <CardDescription>Choose which updates appear in your dashboard.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(notifications.dailyDigest ?? true)} onChange={(e) => setNotifications({ ...notifications, dailyDigest: e.target.checked })} /> Daily digest</label>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(notifications.applicationUpdates ?? true)} onChange={(e) => setNotifications({ ...notifications, applicationUpdates: e.target.checked })} /> Application updates</label>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(notifications.interviewReminders ?? true)} onChange={(e) => setNotifications({ ...notifications, interviewReminders: e.target.checked })} /> Interview reminders</label>
+          <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(notifications.dailyDigest ?? true)} onChange={(e) => setNotifications({ ...notifications, dailyDigest: e.target.checked })} /> Daily digest</label>
+          <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(notifications.applicationUpdates ?? true)} onChange={(e) => setNotifications({ ...notifications, applicationUpdates: e.target.checked })} /> Application updates</label>
+          <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(notifications.interviewReminders ?? true)} onChange={(e) => setNotifications({ ...notifications, interviewReminders: e.target.checked })} /> Interview reminders</label>
           <Button onClick={saveNotifications} disabled={saving === "notifications"}>{saving === "notifications" ? "Saving…" : "Save notifications"}</Button>
         </CardContent>
       </Card>

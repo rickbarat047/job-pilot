@@ -566,42 +566,73 @@ export async function trackCompany(userId: string, companyId: string, status: st
 }
 
 export async function getDashboard(userId: string) {
-  // Postgres returns COUNT(*) as a string (bigint). Coerce every count before
-  // arithmetic so response rate and pagination never become NaN.
-  const count = async (sql: string, params: (string | number | null)[]): Promise<number> => {
-    const row = await get<{ c: number | string }>(sql, params);
-    return Number(row?.c ?? 0);
-  };
-  const discovered = await count("SELECT COUNT(*) as c FROM job_matches WHERE user_id = ?", [userId]);
-  const matched = await count("SELECT COUNT(*) as c FROM job_matches WHERE user_id = ? AND overall_score >= 50", [userId]);
-  const shortlisted = await count("SELECT COUNT(*) as c FROM saved_jobs WHERE user_id = ? AND state = 'shortlisted'", [userId]);
-  const applied = await count("SELECT COUNT(*) as c FROM applications WHERE user_id = ? AND applied_at IS NOT NULL", [userId]);
-  const pending = await count("SELECT COUNT(*) as c FROM applications WHERE user_id = ? AND state IN ('Awaiting Approval','Draft Ready')", [userId]);
-  const interviews = await count("SELECT COUNT(*) as c FROM applications WHERE user_id = ? AND state IN ('Interview','Assessment')", [userId]);
-  const responses = await count("SELECT COUNT(*) as c FROM applications WHERE user_id = ? AND state IN ('Interview','Assessment','Offer','Rejected')", [userId]);
-  const totalApplications = await count("SELECT COUNT(*) as c FROM applications WHERE user_id = ?", [userId]);
-  const newThisWeek = await count("SELECT COUNT(*) as c FROM job_matches WHERE user_id = ? AND created_at >= ?", [userId, new Date(Date.now() - 7 * 86400000).toISOString()]);
-  const pipeline = await all<{ state: string; c: number }>("SELECT state, COUNT(*) as c FROM applications WHERE user_id = ? GROUP BY state", [userId]);
-  const topMatches = (await getJobsForUser(userId, { minScore: 40, limit: 5, sort: "match" })).items;
-  const recentApplications = await getApplications(userId, { limit: 5 });
-  const events = await all<Row>(
-    `SELECT e.*, a.job_id, j.title, j.company_name FROM application_events e
-     JOIN applications a ON a.id = e.application_id JOIN jobs j ON j.id = a.job_id
-     WHERE e.user_id = ? ORDER BY e.created_at DESC LIMIT 8`,
-    [userId],
-  );
-  const logs = await all<Row>("SELECT * FROM automation_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 8", [userId]);
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const eightWeeksAgo = new Date(Date.now() - 56 * 86400000).toISOString();
+  const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString();
+
+  // Run all independent queries in parallel instead of sequentially.
+  const [
+    statsRow,
+    pipeline,
+    topMatchesResult,
+    recentApplicationsRaw,
+    events,
+    logs,
+    followUpRows,
+    weeklyRows,
+    notifications,
+  ] = await Promise.all([
+    // Single aggregated stats query instead of 9 separate COUNT queries.
+    get<Record<string, unknown>>(
+      `SELECT
+        (SELECT COUNT(*) FROM job_matches WHERE user_id = ?) AS discovered,
+        (SELECT COUNT(*) FROM job_matches WHERE user_id = ? AND overall_score >= 50) AS matched,
+        (SELECT COUNT(*) FROM saved_jobs WHERE user_id = ? AND state = 'shortlisted') AS shortlisted,
+        (SELECT COUNT(*) FROM applications WHERE user_id = ? AND applied_at IS NOT NULL) AS applied,
+        (SELECT COUNT(*) FROM applications WHERE user_id = ? AND state IN ('Awaiting Approval','Draft Ready')) AS pending,
+        (SELECT COUNT(*) FROM applications WHERE user_id = ? AND state IN ('Interview','Assessment')) AS interviews,
+        (SELECT COUNT(*) FROM applications WHERE user_id = ? AND state IN ('Interview','Assessment','Offer','Rejected')) AS responses,
+        (SELECT COUNT(*) FROM applications WHERE user_id = ?) AS total_applications,
+        (SELECT COUNT(*) FROM job_matches WHERE user_id = ? AND created_at >= ?) AS new_this_week`,
+      [userId, userId, userId, userId, userId, userId, userId, userId, userId, weekAgo],
+    ),
+    all<{ state: string; c: number }>("SELECT state, COUNT(*) as c FROM applications WHERE user_id = ? GROUP BY state", [userId]),
+    getJobsForUser(userId, { minScore: 40, limit: 5, sort: "match" }),
+    getApplications(userId, { limit: 5 }),
+    all<Row>(
+      `SELECT e.*, a.job_id, j.title, j.company_name FROM application_events e
+       JOIN applications a ON a.id = e.application_id JOIN jobs j ON j.id = a.job_id
+       WHERE e.user_id = ? ORDER BY e.created_at DESC LIMIT 8`,
+      [userId],
+    ),
+    all<Row>("SELECT * FROM automation_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 8", [userId]),
+    all<Row>(
+      `SELECT a.*, j.title, j.company_name FROM applications a JOIN jobs j ON j.id = a.job_id
+       WHERE a.user_id = ? AND a.state = 'Applied' AND a.applied_at IS NOT NULL AND a.applied_at <= ?
+       ORDER BY a.applied_at ASC LIMIT 5`,
+      [userId, fiveDaysAgo],
+    ),
+    all<Row>("SELECT created_at FROM applications WHERE user_id = ? AND created_at >= ?", [userId, eightWeeksAgo]),
+    getNotifications(userId, 8),
+  ]);
+
+  const discovered = Number(statsRow?.discovered ?? 0);
+  const matched = Number(statsRow?.matched ?? 0);
+  const shortlisted = Number(statsRow?.shortlisted ?? 0);
+  const applied = Number(statsRow?.applied ?? 0);
+  const pending = Number(statsRow?.pending ?? 0);
+  const interviews = Number(statsRow?.interviews ?? 0);
+  const responses = Number(statsRow?.responses ?? 0);
+  const totalApplications = Number(statsRow?.total_applications ?? 0);
+  const newThisWeek = Number(statsRow?.new_this_week ?? 0);
+
+  const topMatches = topMatchesResult.items;
+  const recentApplications = recentApplicationsRaw;
   const activity = [
     ...events.map((e) => ({ id: s(e.id), kind: "application" as const, title: s(e.event_type).replace(/_/g, " "), body: `${s(e.title)} · ${s(e.company_name)}${s(e.to_state) ? ` → ${s(e.to_state)}` : ""}`, at: s(e.created_at), href: `/applications/${s(e.application_id)}` })),
     ...logs.map((l) => ({ id: s(l.id), kind: "automation" as const, title: s(l.level), body: s(l.message), at: s(l.created_at), href: "/automation" })),
   ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10);
-  const followUps = (await all<Row>(
-    `SELECT a.*, j.title, j.company_name FROM applications a JOIN jobs j ON j.id = a.job_id
-     WHERE a.user_id = ? AND a.state = 'Applied' AND a.applied_at IS NOT NULL AND a.applied_at <= ?
-     ORDER BY a.applied_at ASC LIMIT 5`,
-    [userId, new Date(Date.now() - 5 * 86400000).toISOString()],
-  )).map((r) => ({ id: s(r.id), title: s(r.title), company: s(r.company_name), appliedAt: s(r.applied_at), daysAgo: Math.floor((Date.now() - new Date(s(r.applied_at)).getTime()) / 86400000) }));
-  const weeklyRows = await all<Row>("SELECT created_at FROM applications WHERE user_id = ? AND created_at >= ?", [userId, new Date(Date.now() - 56 * 86400000).toISOString()]);
+  const followUps = followUpRows.map((r) => ({ id: s(r.id), title: s(r.title), company: s(r.company_name), appliedAt: s(r.applied_at), daysAgo: Math.floor((Date.now() - new Date(s(r.applied_at)).getTime()) / 86400000) }));
   const weekly = Array.from({ length: 8 }, (_, index) => ({ week: index, count: 0, label: "" }));
   const now = Date.now();
   for (const row of weeklyRows) {
@@ -633,7 +664,7 @@ export async function getDashboard(userId: string) {
     recentApplications,
     activity,
     followUps,
-    notifications: await getNotifications(userId, 8),
+    notifications,
   };
 }
 

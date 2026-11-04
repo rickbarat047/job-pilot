@@ -36,10 +36,29 @@ export default function AutomationPage() {
   }
 
   const worker = data?.worker as { status?: string; lastHeartbeat?: string | null; online?: boolean; meta?: Record<string, unknown> } | undefined;
+  const workerState = !worker
+    ? "Not connected"
+    : worker.online
+      ? worker.status === "busy"
+        ? "Working on a task"
+        : "Ready for tasks"
+      : "Not running";
   const tasks = Array.isArray(data?.tasks) ? (data.tasks as any[]) : [];
   const runs = Array.isArray(data?.runs) ? (data.runs as any[]) : [];
   const logs = Array.isArray(data?.logs) ? (data.logs as any[]) : [];
   const queued = tasks.filter((task) => task.status === "queued").length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-32 animate-pulse rounded-3xl bg-muted" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {[0, 1, 2].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />)}
+        </div>
+        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -48,9 +67,9 @@ export default function AutomationPage() {
         <div className="relative flex flex-wrap items-end justify-between gap-5">
           <div>
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card/70 px-3 py-1 text-xs font-medium text-primary">
-              <Zap className="h-3.5 w-3.5" /> Automation center
+              <Zap className="h-3.5 w-3.5" /> Automated workflows
             </div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Automation center</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">Automation center</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
               Control discovery, verification, digests, auto-apply and the browser worker from one place.
             </p>
@@ -69,8 +88,10 @@ export default function AutomationPage() {
               <div className="text-sm text-muted-foreground">Worker status</div>
               <Badge variant={worker?.online ? "success" : "warning"}>{worker?.online ? "Online" : "Offline"}</Badge>
             </div>
-            <div className="mt-2 font-display text-2xl font-semibold">{worker?.status ?? "offline"}</div>
-            <div className="text-xs text-muted-foreground">{worker?.lastHeartbeat ? `Last heartbeat ${new Date(worker.lastHeartbeat).toLocaleString()}` : "No heartbeat yet"}</div>
+            <div className="mt-2 font-display text-2xl font-semibold">{workerState}</div>
+            <div className="text-xs text-muted-foreground">
+              {worker?.lastHeartbeat ? `Last heartbeat ${new Date(worker.lastHeartbeat).toLocaleString()}` : "No heartbeat yet — start the worker to run tasks."}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -95,8 +116,7 @@ export default function AutomationPage() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => runAction({ action: "enqueue", type: "verify-jobs" }, "verify")} disabled={!!busy}>Queue job verification</Button>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Button variant="outline" size="sm" onClick={() => runAction({ action: "enqueue", type: "daily-digest" }, "digest")} disabled={!!busy}>Queue daily digest</Button>
         <Button variant="outline" size="sm" onClick={() => runAction({ action: "enqueue", type: "career-page-check" }, "career")} disabled={!!busy}>Queue career-page check</Button>
       </div>

@@ -38,6 +38,16 @@ export function ApplicationActions({ id, state, method }: { id: string; state: s
       window.open(data.applicationUrl, "_blank", "noopener,noreferrer");
       setMessage("Opened the official application page. Complete it there, then click “I applied manually”.");
       toast.info("Official application page opened.");
+    } else if (typeof data.repliesFound === "number") {
+      const found = Number(data.repliesFound);
+      const already = Number(data.alreadyRecorded || 0);
+      const text = found > 0
+        ? `${found} new ${found === 1 ? "reply" : "replies"} recorded.`
+        : already > 0
+          ? `No new replies. ${already} previously recorded reply${already === 1 ? " is" : "ies are"} already in the timeline.`
+          : "No matching replies found in the last 14 days.";
+      setMessage(text);
+      if (found > 0) toast.success(text); else toast.info(text);
     } else if (data.state) {
       setMessage(data.method === "browser" ? "Browser automation queued. This page refreshes automatically in a moment." : `Status updated to ${data.state}.`);
       toast.success(data.method === "browser" ? "Browser automation queued." : `Status updated to ${data.state}.`);

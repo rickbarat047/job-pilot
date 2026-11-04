@@ -52,7 +52,7 @@ export default function CompaniesPage() {
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card/70 px-3 py-1 text-xs font-medium text-primary">
               <Building2 className="h-3.5 w-3.5" /> Employer intelligence
             </div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Company explorer</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">Company explorer</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
               Research employers, verify career pages, and discover publicly listed recruiter contacts before you apply.
             </p>
@@ -61,15 +61,17 @@ export default function CompaniesPage() {
       </section>
 
       <Card>
-        <CardContent className="flex flex-wrap items-center gap-3 p-4">
-          <div className="relative flex-1 min-w-[220px]">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input className="border-border/80 bg-card/70 pl-9 shadow-sm" placeholder="Search companies or industries…" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} />
           </div>
-          <Button onClick={load}>Search</Button>
-          <Button variant={tracked ? "default" : "outline"} onClick={() => setTracked(!tracked)}>
-            {tracked ? "Showing tracked" : "Tracked only"}
-          </Button>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Button className="w-full sm:w-auto" onClick={load}>Search</Button>
+            <Button variant={tracked ? "default" : "outline"} className="w-full sm:w-auto" onClick={() => setTracked(!tracked)}>
+              {tracked ? "Showing tracked" : "Tracked only"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -113,17 +115,17 @@ export default function CompaniesPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {company.careersUrl ? <a href={company.careersUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Globe className="h-3 w-3" /> Careers</a> : null}
-                    {company.website ? <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Globe className="h-3 w-3" /> Website</a> : null}
+                  <div className="flex flex-col items-end gap-1.5">
+                    {company.careersUrl ? <a href={company.careersUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"><Globe className="h-3.5 w-3.5" /> Careers</a> : null}
+                    {company.website ? <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"><Globe className="h-3.5 w-3.5" /> Website</a> : null}
                   </div>
                 </div>
                 {company.description ? <p className="mt-3 text-sm text-muted-foreground">{company.description}</p> : null}
                 {contacts[company.id]?.length ? (
                   <div className="mt-3 space-y-1">
                     {contacts[company.id].map((contact) => (
-                      <div key={contact.id} className="flex items-center justify-between rounded-xl border border-border bg-background/40 px-3 py-2 text-sm">
-                        <span className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" />{contact.email}</span>
+                      <div key={contact.id} className="flex flex-col gap-2 rounded-xl border border-border bg-background/40 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                        <span className="flex min-w-0 items-center gap-2 break-all"><Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />{contact.email}</span>
                         <Badge variant={contact.verificationStatus === "verified" ? "success" : "secondary"}>{contact.verificationStatus}</Badge>
                       </div>
                     ))}

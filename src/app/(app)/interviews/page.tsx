@@ -49,7 +49,7 @@ export default function InterviewsPage() {
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card/70 px-3 py-1 text-xs font-medium text-primary">
             <Calendar className="h-3.5 w-3.5" /> Interview prep
           </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Interview center</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">Interview center</h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
             Turn an applied role into a structured prep plan and a polished follow-up email.
           </p>
@@ -61,8 +61,8 @@ export default function InterviewsPage() {
           <CardTitle>Create interview prep</CardTitle>
           <p className="text-sm text-muted-foreground">Pick an application that has been submitted or reached interview stage.</p>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[240px] flex-1">
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs text-muted-foreground">Application</label>
             <Select value={applicationId} onChange={(e) => setApplicationId(e.target.value)}>
               <option value="">Select an application…</option>
@@ -73,8 +73,10 @@ export default function InterviewsPage() {
               ))}
             </Select>
           </div>
-          <Button onClick={createPrep} disabled={!applicationId || creating}>{creating ? "Generating…" : "Generate prep"}</Button>
-          <Button variant="outline" onClick={generateFollowup} disabled={!applicationId || generating}>{generating ? "Drafting…" : "Generate follow-up email"}</Button>
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+            <Button className="w-full sm:w-auto" onClick={createPrep} disabled={!applicationId || creating}>{creating ? "Generating…" : "Generate prep"}</Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={generateFollowup} disabled={!applicationId || generating}>{generating ? "Drafting…" : "Generate follow-up email"}</Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -89,7 +91,7 @@ export default function InterviewsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-sm font-medium">{followup.subject}</div>
-            <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-border bg-background/40 p-4 text-sm text-muted-foreground">{followup.body}</pre>
+            <pre className="mt-3 max-h-[400px] overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-background/40 p-4 text-sm text-muted-foreground scrollbar-thin">{followup.body}</pre>
           </CardContent>
         </Card>
       ) : null}

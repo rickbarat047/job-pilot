@@ -17,9 +17,8 @@ export async function POST(request: Request) {
     await createSession(user.id);
     return NextResponse.json({ user });
   } catch (error) {
-    console.error("Login error:", error);
     if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: error.status });
     if (error instanceof z.ZodError) return NextResponse.json({ error: "Invalid input." }, { status: 400 });
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to sign in." }, { status: 400 });
+    return NextResponse.json({ error: "Unable to sign in. Please try again." }, { status: 400 });
   }
 }
