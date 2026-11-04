@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ViewportGuard } from "@/components/viewport-guard";
 import { Toaster } from "sonner";
+import { CookieConsent } from "@/components/cookie-consent";
 import "./globals.css";
 
 const inter = Inter({
@@ -49,9 +50,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.variable}>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:text-sm focus:font-medium"
+        >
+          Skip to content
+        </a>
         <ThemeProvider>{children}</ThemeProvider>
         <ViewportGuard />
         <Toaster richColors position="top-right" />
+        <CookieConsent />
       </body>
     </html>
   );

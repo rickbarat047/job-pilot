@@ -377,7 +377,7 @@ export default function LandingPage() {
   useEffect(() => { if (mounted) setShow(true); }, [mounted]);
 
   return (
-    <main id="top" className="min-h-dvh overflow-x-clip" style={{ background: PAPER, color: INK }}>
+    <main id="main" className="min-h-dvh overflow-x-clip" style={{ background: PAPER, color: INK }}>
       {mounted && !loaded && !reduced ? <Preloader onDone={() => setLoaded(true)} /> : null}
       {mounted && reduced && !loaded ? <SetLoaded onDone={() => setLoaded(true)} /> : null}
 

@@ -20,7 +20,7 @@ export function MarketingNav({ links }: { links: { label: string; href: string }
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-6">
-        <a href="#top" className="flex items-center gap-2.5" aria-label="JobPilot AI home">
+        <a href="#main" className="flex items-center gap-2.5" aria-label="JobPilot AI home">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--primary)_60%,transparent)]">J</span>
           <span className="font-display text-lg font-semibold tracking-tight">JobPilot AI</span>
         </a>
