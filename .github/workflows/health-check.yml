@@ -1,0 +1,18 @@
+name: Health check
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check /api/health
+        run: |
+          status=$(curl -s -o /tmp/body -w "%{http_code}" "${{ secrets.APP_URL }}/api/health")
+          echo "status=$status"
+          cat /tmp/body
+          if [ "$status" != "200" ]; then exit 1; fi

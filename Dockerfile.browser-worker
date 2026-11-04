@@ -1,0 +1,14 @@
+# Browser worker image: runs the Playwright-based auto-apply worker.
+# Build: docker build -f Dockerfile.browser-worker -t jobpilot-browser-worker .
+# Run:   docker run -e APP_URL=... -e WORKER_TOKEN=... jobpilot-browser-worker
+FROM mcr.microsoft.com/playwright:v1.49.0-noble
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HEADLESS=true
+
+# Install only what the worker needs.
+COPY scripts/browser-worker.mjs ./browser-worker.mjs
+# package.json is optional; playwright is already in the base image.
+
+CMD ["node", "browser-worker.mjs"]

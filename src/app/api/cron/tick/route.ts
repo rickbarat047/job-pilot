@@ -1,40 +1,88 @@
 import { NextResponse } from "next/server";
-
 export const runtime = "nodejs";
 export const maxDuration = 300;
-import { all, get, parseJson } from "@/lib/db";
+import { all, get, parseJson, run } from "@/lib/db";
 import { processAutomationTasks } from "@/lib/automation";
 import { runDiscovery } from "@/lib/discovery";
+
+const BATCH_SIZE = Math.max(1, Math.min(50, Number(process.env.CRON_BATCH_SIZE || 8)));
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization");
   const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  // Vercel's own cron sends `Authorization: Bearer $CRON_SECRET`; the external
-  // scheduler sends `x-cron-secret`; manual calls may use `?secret=`.
   const secret = request.headers.get("x-cron-secret") || bearer || new URL(request.url).searchParams.get("secret") || "";
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Invalid cron secret." }, { status: 401 });
   }
-  const users = await all<{ id: string }>("SELECT id FROM users WHERE deleted_at IS NULL");
+
+  // Cursor-based batching: process a small slice of users per invocation so no
+  // single tick can time out on Vercel's 300s serverless limit. The cursor is
+  // persisted in app_meta so successive ticks (and the daily Vercel cron) walk
+  // through all users in deterministic order, then wrap around.
+  let cursor = "";
+  try {
+    const row = await get<{ value: string }>("SELECT value FROM app_meta WHERE key='cron_cursor'");
+    if (row?.value) cursor = row.value;
+  } catch {
+    cursor = "";
+  }
+
+  let users = await all<{ id: string }>(
+    "SELECT id FROM users WHERE deleted_at IS NULL AND id > ? ORDER BY id ASC LIMIT ?",
+    [cursor, BATCH_SIZE],
+  );
+  let wrapped = false;
+  if (users.length === 0) {
+    users = await all<{ id: string }>("SELECT id FROM users WHERE deleted_at IS NULL ORDER BY id ASC LIMIT ?", [BATCH_SIZE]);
+    wrapped = true;
+  }
+
   const results = [];
   for (const user of users) {
-    const schedules = await all<{ id: string; enabled: number; next_run_at: string | null; sources: string }>("SELECT id, enabled, next_run_at, sources FROM scheduled_searches WHERE user_id = ? AND enabled = 1", [user.id]);
+    const schedules = await all<{ id: string; enabled: number; next_run_at: string | null; sources: string }>(
+      "SELECT id, enabled, next_run_at, sources FROM scheduled_searches WHERE user_id = ? AND enabled = 1",
+      [user.id],
+    );
     for (const schedule of schedules) {
       if (schedule.next_run_at && new Date(schedule.next_run_at).getTime() > Date.now()) continue;
       try {
         const sources = parseJson<string[]>(schedule.sources, []);
-        await runDiscovery(user.id, { sourceKeys: Array.isArray(sources) && sources.length ? sources : undefined, match: true });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { run } = await import("@/lib/db");
-        await run("UPDATE scheduled_searches SET last_run_at=?, next_run_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), new Date(Date.now() + 86400000).toISOString(), new Date().toISOString(), schedule.id]);
+        const discovery = await runDiscovery(user.id, { sourceKeys: sources });
+        await run(
+          "UPDATE scheduled_searches SET last_run_at=?, next_run_at=?, updated_at=? WHERE id=?",
+          [new Date().toISOString(), new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), new Date().toISOString(), schedule.id],
+        );
+        results.push({ userId: user.id, scheduleId: schedule.id, ok: true, discovery });
       } catch (error) {
-        results.push({ userId: user.id, error: error instanceof Error ? error.message : String(error) });
+        results.push({ userId: user.id, scheduleId: schedule.id, ok: false, error: error instanceof Error ? error.message : String(error) });
       }
     }
-    await processAutomationTasks(user.id, 4);
   }
-  return NextResponse.json({ ok: true, users: users.length, results });
+
+  // Automation tasks (non-browser) run every tick regardless of user batching.
+  try {
+    await processAutomationTasks();
+  } catch (error) {
+    results.push({ automation: true, ok: false, error: error instanceof Error ? error.message : String(error) });
+  }
+
+  // Advance cursor.
+  const newCursor = users.length > 0 ? String(users[users.length - 1].id) : cursor;
+  const cycleComplete = users.length < BATCH_SIZE || wrapped;
+  const persistedCursor = cycleComplete ? "" : newCursor;
+  try {
+    await run(
+      "INSERT INTO app_meta (key, value) VALUES ('cron_cursor', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+      [persistedCursor],
+    );
+  } catch {
+    try {
+      await run("UPDATE app_meta SET value=? WHERE key='cron_cursor'", [persistedCursor]);
+    } catch {
+      await run("INSERT INTO app_meta (key, value) VALUES ('cron_cursor', ?)", [persistedCursor]);
+    }
+  }
+
+  const hasMore = !cycleComplete && users.length === BATCH_SIZE;
+  return NextResponse.json({ ok: true, batch: users.length, processed: results.length, hasMore, cursor: persistedCursor, results });
 }
-
-
-

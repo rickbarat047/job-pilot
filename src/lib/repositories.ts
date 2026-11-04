@@ -528,6 +528,8 @@ export async function createNotification(userId: string, type: string, title: st
   await run("INSERT INTO notifications (id, user_id, type, title, body, action_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [
     newId("ntf"), userId, type, title, body, actionUrl ?? null, nowIso(),
   ]);
+  // Best-effort transactional email (Resend). Fire-and-forget; never blocks.
+  void import("./transactional-email").then((m) => m.emailNotification(userId, title, body, actionUrl)).catch(() => {});
 }
 
 export async function markNotificationsRead(userId: string, id?: string): Promise<void> {
