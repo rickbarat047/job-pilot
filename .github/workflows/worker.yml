@@ -1,0 +1,28 @@
+name: Automation worker
+
+on:
+  schedule:
+    # Every 10 minutes (GitHub minimum is 5). Each run ticks once and exits.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# Keep only the latest scheduled run per interval; skip runs behind schedule.
+concurrency:
+  group: automation-worker
+  cancel-in-progress: true
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Cron tick
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SCHEDULER_RUNS: 1
+        run: node scripts/scheduler.mjs

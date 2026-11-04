@@ -7,7 +7,11 @@ import { processAutomationTasks } from "@/lib/automation";
 import { runDiscovery } from "@/lib/discovery";
 
 export async function POST(request: Request) {
-  const secret = request.headers.get("x-cron-secret") || new URL(request.url).searchParams.get("secret");
+  const authHeader = request.headers.get("authorization");
+  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  // Vercel's own cron sends `Authorization: Bearer $CRON_SECRET`; the external
+  // scheduler sends `x-cron-secret`; manual calls may use `?secret=`.
+  const secret = request.headers.get("x-cron-secret") || bearer || new URL(request.url).searchParams.get("secret") || "";
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Invalid cron secret." }, { status: 401 });
   }

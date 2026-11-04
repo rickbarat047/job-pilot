@@ -11,8 +11,24 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "JobPilot AI — Autonomous job hunting for India",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://jobpilot-ai-sand.vercel.app"),
+  title: {
+    default: "JobPilot AI — Autonomous job hunting for India",
+    template: "%s — JobPilot AI",
+  },
   description: "Discover, match, tailor and track job applications across India with an AI career agent.",
+  openGraph: {
+    title: "JobPilot AI — Your next opportunity. Already in motion.",
+    description: "Discover relevant jobs across India, create tailored applications, and manage your entire job search with an AI career assistant that keeps you in control.",
+    type: "website",
+    siteName: "JobPilot AI",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "JobPilot AI — Your next opportunity. Already in motion.",
+    description: "An AI career assistant for India — approval-first, CV-true, in your control.",
+  },
+  alternates: { canonical: "/" },
 };
 
 export const viewport: Viewport = {

@@ -1,0 +1,15 @@
+# Runs the JobPilot scheduler loop against the production app.
+# The scheduler POSTs /api/cron/tick on an interval, which drives scheduled
+# job discovery and non-browser automation tasks (digests, career-page checks).
+#
+# Required environment:
+#   APP_URL            e.g. https://jobpilot-ai-sand.vercel.app
+#   CRON_SECRET        must match the app's CRON_SECRET env var
+#   SCHEDULER_INTERVAL_MS  optional, default 600000 (10 minutes)
+FROM node:24-alpine
+
+WORKDIR /app
+COPY scripts/scheduler.mjs ./scheduler.mjs
+
+ENV NODE_ENV=production
+CMD ["node", "scheduler.mjs"]
