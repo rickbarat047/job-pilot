@@ -440,7 +440,7 @@ export default function LandingPage() {
                 <Link
                   href="/register"
                   className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 px-6 text-sm font-bold transition-all hover:-translate-y-0.5 active:translate-y-0.5 sm:w-auto"
-                  style={{ background: "#FF5B5B", color: "white", borderColor: INK, boxShadow: `4px 4px 0 0 ${INK}` }}
+                  style={{ background: "#FF5B5B", color: INK, borderColor: INK, boxShadow: `4px 4px 0 0 ${INK}` }}
                 >
                   Start your job search <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
@@ -620,7 +620,7 @@ export default function LandingPage() {
         <div className="pointer-events-none absolute left-0 top-[-12px] h-6 w-full opacity-70" style={{ background: `repeating-linear-gradient(90deg, ${DUCT} 0 50px, #7a828e 50px 100px)` }} aria-hidden="true" />
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-lg border-2 text-base font-black" style={{ borderColor: INK, background: "#FF5B5B", color: "white", boxShadow: `3px 3px 0 0 ${INK}` }}>J</span>
+            <span className="grid h-9 w-9 place-items-center rounded-lg border-2 text-base font-black" style={{ borderColor: INK, background: "#FF5B5B", color: INK, boxShadow: `3px 3px 0 0 ${INK}` }}>J</span>
             <span className="font-display text-lg font-black tracking-tight" style={{ color: INK }}>JobPilot AI</span>
           </div>
           <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium" aria-label="Footer" style={{ color: "#444" }}>
