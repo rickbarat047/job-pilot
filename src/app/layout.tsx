@@ -30,6 +30,9 @@ export const metadata: Metadata = {
     description: "An AI career assistant for India — approval-first, CV-true, in your control.",
   },
   alternates: { canonical: "/" },
+  verification: {
+    google: "_D_v_lDkVdskxKpdOc3hOPlw98tjKpZfA1mxGG6scaM",
+  },
 };
 
 export const viewport: Viewport = {
