@@ -45,6 +45,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     detail: event.detail,
     at: event.createdAt,
     to: event.to,
+    from: event.from,
   }));
 
   return (
