@@ -37,6 +37,15 @@ export default function JobsPage() {
   const [minScore, setMinScore] = useState("");
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  function toggleCompare(id: string) {
+    setCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 3) return prev;
+      return [...prev, id];
+    });
+  }
 
   async function load(overrides: FilterOverrides = {}) {
     setLoading(true);
@@ -280,6 +289,16 @@ export default function JobsPage() {
                     >
                       {item.savedState === "shortlisted" ? "Saved" : "Shortlist"}
                     </Button>
+                    <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={compareIds.includes(item.job.id)}
+                        onChange={() => toggleCompare(item.job.id)}
+                        className="h-4 w-4 rounded border-border"
+                        aria-label={`Compare ${item.job.title}`}
+                      />
+                      Compare
+                    </label>
                     {item.applicationId ? (
                       <Link href={`/applications/${item.applicationId}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
                         View application
@@ -292,6 +311,31 @@ export default function JobsPage() {
           ))}
         </AnimatePresence>
       </div>
+
+      {compareIds.length > 0 ? (
+        <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-xl">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Compare ({compareIds.length}/3):</span>
+              {compareIds.map((id) => {
+                const item = jobs.find((j) => j.job.id === id);
+                return (
+                  <span key={id} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
+                    {item?.job.title ?? id}
+                    <button type="button" onClick={() => toggleCompare(id)} className="text-muted-foreground hover:text-foreground" aria-label="Remove">✕</button>
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setCompareIds([])}>Clear</Button>
+              <Link href={`/jobs/compare?ids=${compareIds.join(",")}`} className={cn(buttonVariants({ size: "sm" }), "bg-primary text-primary-foreground")}>
+                Compare
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
