@@ -118,8 +118,13 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            <Link href="/jobs" className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-muted sm:h-10">
+            <Link href="/jobs" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-muted sm:h-10">
               Browse jobs
+              {data.stats.newThisWeek > 0 ? (
+                <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                  {data.stats.newThisWeek > 99 ? "99+" : data.stats.newThisWeek}
+                </span>
+              ) : null}
             </Link>
             <RunDiscoveryButton />
           </div>

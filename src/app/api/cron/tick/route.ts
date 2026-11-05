@@ -67,6 +67,26 @@ export async function POST(request: Request) {
     results.push({ automation: true, ok: false, error: error instanceof Error ? error.message : String(error) });
   }
 
+  // Daily match digest (Resend) — fire-and-forget, gated to once per 24h per user.
+  if (process.env.RESEND_API_KEY) {
+    for (const user of users) {
+      try {
+        const key = `last_digest_${user.id}`;
+        const row = await get<{ value: string }>("SELECT value FROM app_meta WHERE key = ?", [key]);
+        const last = row?.value ? new Date(row.value).getTime() : 0;
+        if (Date.now() - last < 24 * 60 * 60 * 1000) continue;
+        const { sendMatchDigest } = await import("@/lib/transactional-email");
+        const sent = await sendMatchDigest(user.id);
+        if (sent) {
+          await run("INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [key, new Date().toISOString()]);
+          results.push({ userId: user.id, digest: true, ok: true });
+        }
+      } catch (error) {
+        results.push({ userId: user.id, digest: true, ok: false, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  }
+
   // Advance cursor.
   const newCursor = users.length > 0 ? String(users[users.length - 1].id) : cursor;
   const cycleComplete = users.length < BATCH_SIZE || wrapped;
