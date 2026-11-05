@@ -51,6 +51,7 @@ function downloadIcs(session: any, application?: any) {
 
 export default function InterviewsPage() {
   const [data, setData] = useState<{ applications?: any[]; sessions?: any[] }>({});
+  const [loading, setLoading] = useState(true);
   const [applicationId, setApplicationId] = useState("");
   const [followup, setFollowup] = useState<{ subject: string; body: string } | null>(null);
   const [creating, setCreating] = useState(false);
@@ -60,8 +61,10 @@ export default function InterviewsPage() {
   const [savingSchedule, setSavingSchedule] = useState(false);
 
   async function load() {
+    setLoading(true);
     const response = await fetch("/api/interviews");
     setData(await response.json());
+    setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
@@ -155,7 +158,23 @@ export default function InterviewsPage() {
         </Card>
       ) : null}
 
-      {sessions.length === 0 ? (
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {[0, 1].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-5 w-32 rounded bg-muted" />
+                <div className="mt-2 h-3 w-24 rounded bg-muted" />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="h-4 w-full rounded bg-muted" />
+                <div className="h-4 w-3/4 rounded bg-muted" />
+                <div className="h-4 w-1/2 rounded bg-muted" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : sessions.length === 0 ? (
         <EmptyState title="No interview prep yet" description="Generate prep for an application to see likely questions and talking points." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
