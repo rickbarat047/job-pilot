@@ -7,9 +7,13 @@ import { getDb, newId, nowIso, run, get } from "@/lib/db";
 import { sendApplicationEmail } from "@/lib/email";
 import { enqueueTask, workerIsOnline } from "@/lib/automation";
 import { relativeStoragePath } from "@/lib/storage";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const ip = clientIp(request);
+    const rate = checkRateLimit(`submit:${ip}`, 10, 15 * 60 * 1000);
+    if (!rate.ok) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
     const user = await requireApiUser();
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));

@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth";
 import { runDiscovery, rescoreMatches } from "@/lib/discovery";
 import { ensureBootstrap } from "@/lib/bootstrap";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIp(request);
+    const rate = checkRateLimit(`discovery:${ip}`, 5, 15 * 60 * 1000);
+    if (!rate.ok) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
     const user = await requireApiUser();
     await ensureBootstrap();
     const body = await request.json().catch(() => ({}));

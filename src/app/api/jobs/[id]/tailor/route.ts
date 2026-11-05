@@ -8,9 +8,13 @@ import { evaluatePermission, assertPermission } from "@/lib/permissions";
 import { getDb, newId, nowIso, run, get } from "@/lib/db";
 import { relativeStoragePath } from "@/lib/storage";
 import { getVerifiedRecruiterContact } from "@/lib/companies/contacts";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const ip = clientIp(_request);
+    const rate = checkRateLimit(`tailor:${ip}`, 10, 15 * 60 * 1000);
+    if (!rate.ok) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
     const user = await requireApiUser();
     const { id: jobId } = await context.params;
     const permissions = await getPermissionsForUser(user.id);
