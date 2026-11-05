@@ -115,6 +115,9 @@ export default function ApplicationsPage() {
           {showAll ? (
             <Button variant="outline" size="sm" onClick={() => setShowAll(false)}>Active only</Button>
           ) : null}
+          <a href="/api/applications/export" className={cn(buttonVariants({ variant: "outline", size: "sm" }))} download>
+            Export CSV
+          </a>
           <Link href="/jobs" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-primary")}>
             Find jobs
           </Link>
