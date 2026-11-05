@@ -81,7 +81,7 @@ export function JobCard({ job, score, action }: { job: JobCardData; score?: numb
         ) : null}
       </div>
       {typeof score === "number" ? <Progress value={score} className="mt-3" /> : null}
-      {action ? <div className="mt-3 flex flex-wrap gap-2 [&>*]:min-w-[45%] [&>*]:flex-1">{action}</div> : null}
+      {action ? <div className="mt-3 flex flex-wrap gap-2">{action}</div> : null}
     </div>
   );
 }
