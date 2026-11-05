@@ -1,0 +1,29 @@
+name: Database backup
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"   # Weekly Sunday 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pg client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_PATH: ${{ secrets.DATABASE_PATH }}
+        run: node scripts/backup-db.mjs --out ./backups
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobpilot-db-backup
+          path: ./backups/**
+          retention-days: 30
