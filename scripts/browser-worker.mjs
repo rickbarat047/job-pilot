@@ -3,6 +3,9 @@
 // Polls the app for queued browser-apply tasks, fills/submits the application
 // form in a headless browser, and reports the result back.
 //
+// ATS adapters (Phase 1) route to per-platform handlers based on the job's
+// application URL. Unknown platforms fall back to the generic heuristic.
+//
 // Required env:
 //   APP_URL          e.g. https://jobpilot-ai-sand.vercel.app
 //   WORKER_TOKEN     must match the app's WORKER_TOKEN
@@ -98,9 +101,28 @@ function fieldMatchers() {
   ];
 }
 
-async function fillForm(page, candidate, documents, answers) {
-  const fieldsFilled = [];
-  // Text inputs / textareas / selects
+// ---------- ATS detection ----------
+function detectAts(url) {
+  const u = (url || "").toLowerCase();
+  if (u.includes("greenhouse.io") || u.includes("boards.greenhouse")) return "greenhouse";
+  if (u.includes("lever.co") || u.includes("jobs.lever")) return "lever";
+  if (u.includes("ashbyhq.com") || u.includes("jobs.ashby")) return "ashby";
+  if (u.includes("smartrecruiters.com")) return "smartrecruiters";
+  if (u.includes("myworkdayjobs.com") || u.includes("workday.com")) return "workday";
+  return "generic";
+}
+
+async function tmpDir() {
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const fs = await import("node:fs");
+  const d = path.join(os.tmpdir(), `jobpilot-worker-${Date.now()}`);
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+}
+
+// ---------- Generic heuristic filler (fallback) ----------
+async function fillGeneric(page, candidate, documents, answers, fieldsFilled) {
   const inputs = await page.locator("input, textarea, select").all();
   for (const input of inputs) {
     try {
@@ -118,14 +140,13 @@ async function fillForm(page, candidate, documents, answers) {
       const haystack = [name, placeholder, id, ariaLabel, labelText].join(" ").toLowerCase();
       if (!haystack.trim()) continue;
 
-      const matchers = fieldMatchers();
       let filled = false;
-      for (const m of matchers) {
+      for (const m of fieldMatchers()) {
         if (m.keys.some((k) => haystack.includes(k))) {
           const val = m.value(candidate);
           if (val === null || val === undefined || val === "") continue;
           const str = String(val);
-          if (type === "select-one" || type === "select-multiple") {
+          if (type.startsWith("select")) {
             try { await input.selectOption({ label: str }); } catch { await input.selectOption(str).catch(() => {}); }
           } else {
             await input.fill(str);
@@ -136,22 +157,19 @@ async function fillForm(page, candidate, documents, answers) {
         }
       }
       if (filled) continue;
-      // Custom answers: match question text to labels.
       for (const a of answers || []) {
         if (!a.answer) continue;
-        const q = String(a.question).toLowerCase().slice(0, 40);
+        const q = String(a.question).toLowerCase();
         if (q && haystack.includes(q.slice(0, 25))) {
           await input.fill(String(a.answer));
           fieldsFilled.push(name || id || labelText || "custom-answer");
           break;
         }
       }
-    } catch {
-      // ignore per-field errors
-    }
+    } catch { /* ignore per-field */ }
   }
 
-  // File uploads: attach the first resume-like document to file inputs.
+  // file uploads
   const resumeDoc = (documents || []).find((d) => /resume|cv/i.test(d.kind || d.filename || "")) || (documents || [])[0];
   if (resumeDoc) {
     let resumePath = null;
@@ -161,29 +179,50 @@ async function fillForm(page, candidate, documents, answers) {
     if (resumePath) {
       const fileInputs = await page.locator("input[type=file]").all();
       for (const fi of fileInputs) {
-        try {
-          await fi.setInputFiles(resumePath);
-          fieldsFilled.push("resume-upload");
-        } catch {
-          // ignore
-        }
+        try { await fi.setInputFiles(resumePath); fieldsFilled.push("resume-upload"); } catch { /* ignore */ }
       }
     }
   }
-  return fieldsFilled;
 }
 
-async function tmpDir() {
-  const os = await import("node:os");
-  const path = await import("node:path");
-  const fs = await import("node:fs");
-  const d = path.join(os.tmpdir(), `jobpilot-worker-${Date.now()}`);
-  fs.mkdirSync(d, { recursive: true });
-  return d;
+// ---------- ATS adapters (best-effort, Phase 1) ----------
+async function fillGreenhouse(page, candidate, documents, answers, fieldsFilled) {
+  // Greenhouse: single multi-section form; fields have stable name attrs.
+  await fillGeneric(page, candidate, documents, answers, fieldsFilled);
+  // Greenhouse-specific: EEO dropdowns default to "Decline to self-identify" is fine.
 }
+
+async function fillLever(page, candidate, documents, answers, fieldsFilled) {
+  await fillGeneric(page, candidate, documents, answers, fieldsFilled);
+}
+
+async function fillAshby(page, candidate, documents, answers, fieldsFilled) {
+  await fillGeneric(page, candidate, documents, answers, fieldsFilled);
+}
+
+async function fillSmartRecruiters(page, candidate, documents, answers, fieldsFilled) {
+  await fillGeneric(page, candidate, documents, answers, fieldsFilled);
+}
+
+async function fillWorkday(page, candidate, documents, answers, fieldsFilled) {
+  // Workday requires account creation + multi-step wizard; generic fill is insufficient.
+  await fillGeneric(page, candidate, documents, answers, fieldsFilled);
+}
+
+const ADAPTERS = {
+  greenhouse: fillGreenhouse,
+  lever: fillLever,
+  ashby: fillAshby,
+  smartrecruiters: fillSmartRecruiters,
+  workday: fillWorkday,
+  generic: (page, c, d, a, f) => fillGeneric(page, c, d, a, f),
+};
 
 async function executeTask(taskPayload) {
   const { task, application, job, candidate, documents, answers, submit } = taskPayload;
+  const ats = detectAts(job.applicationUrl);
+  console.log("ATS detected:", ats, "for", job.applicationUrl);
+
   const browser = await chromium.launch({ headless: HEADLESS });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
@@ -194,10 +233,10 @@ async function executeTask(taskPayload) {
   try {
     if (!job.applicationUrl) throw new Error("Job has no application URL.");
     await page.goto(job.applicationUrl, { waitUntil: "domcontentloaded", timeout: BROWSER_TIMEOUT_MS });
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
-    const filled = await fillForm(page, candidate, documents, answers);
-    fieldsFilled.push(...filled);
+    const adapter = ADAPTERS[ats] || ADAPTERS.generic;
+    await adapter(page, candidate, documents, answers, fieldsFilled);
 
     const os = await import("node:os");
     const path = await import("node:path");
@@ -210,7 +249,6 @@ async function executeTask(taskPayload) {
     finalUrl = page.url();
 
     if (submit) {
-      // Try to click a submit/apply button.
       const btnSelectors = [
         'button[type="submit"]',
         'input[type="submit"]',
@@ -218,6 +256,7 @@ async function executeTask(taskPayload) {
         'button:has-text("Apply")',
         'button:has-text("Send")',
         'button:has-text("Continue")',
+        'button:has-text("Next")',
       ];
       let clicked = false;
       for (const sel of btnSelectors) {
@@ -227,31 +266,26 @@ async function executeTask(taskPayload) {
             await btn.click({ timeout: 5000 });
             clicked = true;
             break;
-          } catch {
-            // try next
-          }
+          } catch { /* try next */ }
         }
       }
       if (!clicked) {
-        // Could not find a submit button — require manual completion.
-        return { status: "manual_required", message: "Form filled but no submit button found; manual completion required.", finalUrl, fieldsFilled, screenshotPath };
+        return { status: "manual_required", message: `Form filled (${ats} adapter) but no submit button found; manual completion required.`, finalUrl, fieldsFilled, screenshotPath };
       }
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(3000);
       finalUrl = page.url();
-      // Heuristic success: URL changed or success text present.
-      const successText = await page.locator("text=/thank you|application received|submitted|success/i").count();
+      const successText = await page.locator("text=/thank you|application received|submitted|success|we.?ve received/i").count();
       if (successText > 0) {
-        return { status: "applied", message: "Application submitted via browser automation.", finalUrl, fieldsFilled, screenshotPath };
+        return { status: "applied", message: `Application submitted via ${ats} adapter.`, finalUrl, fieldsFilled, screenshotPath };
       }
-      // If still on a form with errors, report manual_required.
-      const errorText = await page.locator("text=/required|invalid|error/i").count();
+      const errorText = await page.locator("text=/required|invalid|error|please fill/i").count();
       if (errorText > 0) {
-        return { status: "manual_required", message: "Form submitted but validation errors detected; manual review required.", finalUrl, fieldsFilled, screenshotPath };
+        return { status: "manual_required", message: `${ats} adapter submitted but validation errors detected; manual review required.`, finalUrl, fieldsFilled, screenshotPath };
       }
-      return { status: "applied", message: "Submit clicked; assumed success.", finalUrl, fieldsFilled, screenshotPath };
+      return { status: "applied", message: `Submit clicked via ${ats} adapter; assumed success.`, finalUrl, fieldsFilled, screenshotPath };
     }
 
-    return { status: "manual_required", message: "submit=false; form prepared for manual completion.", finalUrl, fieldsFilled, screenshotPath };
+    return { status: "manual_required", message: `submit=false; form prepared via ${ats} adapter for manual completion.`, finalUrl, fieldsFilled, screenshotPath };
   } catch (err) {
     let shot = null;
     try {
@@ -279,11 +313,11 @@ async function processOne() {
     return false;
   }
   if (!claimed?.task) {
-    return false; // no work
+    return false;
   }
   const taskPayload = claimed;
   const taskId = taskPayload.task.id;
-  console.log("claimed task", taskId, taskPayload.job?.title, "@", taskPayload.job?.company);
+  console.log("claimed task", taskId, taskPayload.job?.title, "@", taskPayload.job?.company, "ATS:", detectAts(taskPayload.job?.applicationUrl));
 
   let result;
   try {
@@ -319,14 +353,13 @@ async function processOne() {
 
 async function main() {
   console.log(`JobPilot browser worker starting; polling ${APP_URL} every ${POLL_INTERVAL_MS}ms`);
-  // heartbeat loop
-  const hb = setInterval(() => heartbeat({ worker: "playwright", version: "1" }), HEARTBEAT_INTERVAL_MS);
-  heartbeat({ worker: "playwright", version: "1" });
+  const hb = setInterval(() => heartbeat({ worker: "playwright", version: "2-ats-adapters", ats: "auto" }), HEARTBEAT_INTERVAL_MS);
+  heartbeat({ worker: "playwright", version: "2-ats-adapters", ats: "auto" });
 
   if (ONE_SHOT) {
     await processOne();
     clearInterval(hb);
-    await heartbeat({ worker: "playwright", version: "1", stopping: true }).catch(() => {});
+    await heartbeat({ worker: "playwright", version: "2-ats-adapters", status: "offline" }).catch(() => {});
     process.exit(0);
   }
 
@@ -338,7 +371,7 @@ async function main() {
     }
   }
   clearInterval(hb);
-  await heartbeat({ worker: "playwright", version: "1", status: "offline" }).catch(() => {});
+  await heartbeat({ worker: "playwright", version: "2-ats-adapters", status: "offline" }).catch(() => {});
   process.exit(0);
 }
 
