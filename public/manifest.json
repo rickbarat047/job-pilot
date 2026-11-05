@@ -1,0 +1,16 @@
+{
+  "name": "JobPilot AI",
+  "short_name": "JobPilot",
+  "description": "Discover, match, tailor and track job applications across India with an AI career assistant.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FB",
+  "theme_color": "#087F68",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["productivity", "business"],
+  "lang": "en-IN"
+}

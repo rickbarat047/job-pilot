@@ -4,6 +4,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ViewportGuard } from "@/components/viewport-guard";
 import { Toaster } from "sonner";
 import { CookieConsent } from "@/components/cookie-consent";
+import { ServiceWorkerRegister } from "@/components/sw-register";
+import { InstallPrompt } from "@/components/install-prompt";
 import "./globals.css";
 
 const inter = Inter({
@@ -52,6 +54,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#087F68" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="JobPilot AI" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+      </head>
       <body className={inter.variable}>
         <a
           href="#main"
@@ -63,6 +73,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ViewportGuard />
         <Toaster richColors position="top-right" />
         <CookieConsent />
+        <ServiceWorkerRegister />
+        <InstallPrompt />
       </body>
     </html>
   );
