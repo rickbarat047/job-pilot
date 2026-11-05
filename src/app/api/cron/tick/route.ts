@@ -81,6 +81,11 @@ export async function POST(request: Request) {
           await run("INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [key, new Date().toISOString()]);
           results.push({ userId: user.id, digest: true, ok: true });
         }
+        // Push notification (best-effort, alongside email)
+        try {
+          const { sendPushToUser } = await import("@/lib/push");
+          await sendPushToUser(user.id, { title: "JobPilot: new matches", body: "You have new high-match jobs. Tap to view.", url: "/jobs" });
+        } catch { /* ignore */ }
       } catch (error) {
         results.push({ userId: user.id, digest: true, ok: false, error: error instanceof Error ? error.message : String(error) });
       }

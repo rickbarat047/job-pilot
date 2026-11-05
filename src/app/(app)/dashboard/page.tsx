@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/misc";
 import { EmptyState } from "@/components/empty-state";
 import { RunDiscoveryButton } from "@/components/run-discovery-button";
+import { PushToggle } from "@/components/push-toggle";
 
 interface DashboardData {
   stats: {
@@ -118,6 +119,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <PushToggle />
             <Link href="/jobs" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-muted sm:h-10">
               Browse jobs
               {data.stats.newThisWeek > 0 ? (

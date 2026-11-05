@@ -507,9 +507,14 @@ CREATE TABLE IF NOT EXISTS worker_status (
   meta TEXT NOT NULL DEFAULT '{}'
 );
 
-CREATE TABLE IF NOT EXISTS app_meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(user_id, endpoint)
 );
 `;
 
