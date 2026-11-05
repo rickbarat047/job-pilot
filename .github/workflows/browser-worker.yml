@@ -1,0 +1,40 @@
+name: Browser worker
+
+on:
+  schedule:
+    # Every 10 minutes. Public repos get unlimited Actions minutes.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# Avoid overlapping runs (a long browser task could exceed the interval).
+concurrency:
+  group: browser-worker
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install Playwright
+        run: |
+          npm install playwright@1.49.0
+          npx playwright install chromium --with-deps
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.0
+      - name: Run browser worker (one task)
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          WORKER_TOKEN: ${{ secrets.WORKER_TOKEN }}
+          HEADLESS: "true"
+          ONE_SHOT: "1"
+          POLL_INTERVAL_MS: "1000"
+        run: node scripts/browser-worker.mjs

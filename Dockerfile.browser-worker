@@ -7,8 +7,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HEADLESS=true
 
-# Install only what the worker needs.
+# Install the Playwright JS library (the base image ships the browser binaries;
+# the npm package must be installed explicitly).
+COPY package.json ./package.json
+RUN npm install playwright@1.49.0 --no-save --omit=dev
+
 COPY scripts/browser-worker.mjs ./browser-worker.mjs
-# package.json is optional; playwright is already in the base image.
 
 CMD ["node", "browser-worker.mjs"]
