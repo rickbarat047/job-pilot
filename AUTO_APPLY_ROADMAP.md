@@ -19,7 +19,7 @@ Make auto-apply genuinely reliable for the top ATS platforms used by Indian empl
 - Detect ATS from `applicationUrl` hostname/path.
 - Route to a dedicated adapter; fall back to generic heuristic.
 - Adapters: Greenhouse, Lever, Ashby, SmartRecruiters, Workday, generic.
-- Status: **scaffolded** (detection + routing added; adapters best-effort).
+- Status: **DONE** (detection + routing + per-ATS selector maps added; needs real-world validation).
 
 ### Phase 2 — Greenhouse + Lever + Ashby adapters (2 weeks)
 - Greenhouse: multi-step form, EEO questions, resume upload, submit, success text.
@@ -27,6 +27,7 @@ Make auto-apply genuinely reliable for the top ATS platforms used by Indian empl
 - Ashby: multi-step, screening questions, resume, submit.
 - Add per-adapter selectors, retry on transient failures, screenshot on every step.
 - Validate against 20+ real job postings per ATS.
+- Status: **scaffolded** (selectors added; needs live-form validation).
 
 ### Phase 3 — Workday + SmartRecruiters (2 weeks)
 - Workday: account creation/login flow, multi-step wizard, resume parse, submit.

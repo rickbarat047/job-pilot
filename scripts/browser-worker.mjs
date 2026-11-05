@@ -3,8 +3,8 @@
 // Polls the app for queued browser-apply tasks, fills/submits the application
 // form in a headless browser, and reports the result back.
 //
-// ATS adapters (Phase 1) route to per-platform handlers based on the job's
-// application URL. Unknown platforms fall back to the generic heuristic.
+// ATS adapters (Phase 2) route to per-platform handlers based on the job's
+// application URL, then fall back to the generic heuristic.
 //
 // Required env:
 //   APP_URL          e.g. https://jobpilot-ai-sand.vercel.app
@@ -169,7 +169,6 @@ async function fillGeneric(page, candidate, documents, answers, fieldsFilled) {
     } catch { /* ignore per-field */ }
   }
 
-  // file uploads
   const resumeDoc = (documents || []).find((d) => /resume|cv/i.test(d.kind || d.filename || "")) || (documents || [])[0];
   if (resumeDoc) {
     let resumePath = null;
@@ -185,27 +184,166 @@ async function fillGeneric(page, candidate, documents, answers, fieldsFilled) {
   }
 }
 
-// ---------- ATS adapters (best-effort, Phase 1) ----------
+// ---------- ATS adapters (Phase 2: per-platform selectors) ----------
+async function tryFill(page, selector, value, fieldsFilled, label) {
+  if (!value) return false;
+  try {
+    const loc = page.locator(selector).first();
+    if (await loc.count() === 0) return false;
+    const tag = await loc.evaluate((el) => el.tagName.toLowerCase());
+    if (tag === "select") {
+      await loc.selectOption({ label: String(value) }).catch(async () => { await loc.selectOption(String(value)).catch(() => {}); });
+    } else {
+      await loc.fill(String(value));
+    }
+    fieldsFilled.push(label);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tryUpload(page, selector, filePath, fieldsFilled) {
+  if (!filePath) return false;
+  try {
+    const loc = page.locator(selector).first();
+    if (await loc.count() === 0) return false;
+    await loc.setInputFiles(filePath);
+    fieldsFilled.push("resume-upload");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function fillGreenhouse(page, candidate, documents, answers, fieldsFilled) {
-  // Greenhouse: single multi-section form; fields have stable name attrs.
+  await tryFill(page, 'input[name="first_name"], #first_name', candidate.fullName?.split(" ")[0], fieldsFilled, "first_name");
+  await tryFill(page, 'input[name="last_name"], #last_name', candidate.fullName?.split(" ").slice(1).join(" "), fieldsFilled, "last_name");
+  await tryFill(page, 'input[name="email"], #email', candidate.email, fieldsFilled, "email");
+  await tryFill(page, 'input[name="phone"], #phone', candidate.phone, fieldsFilled, "phone");
+  await tryFill(page, 'input[name="location"], #location', [candidate.city, candidate.state, candidate.country].filter(Boolean).join(", "), fieldsFilled, "location");
+  await tryFill(page, 'textarea[name="cover_letter"], #cover_letter', candidate.summary, fieldsFilled, "cover_letter");
+  await tryFill(page, 'input[name="urls[LinkedIn]"], input[name*="linkedin" i]', candidate.linkedinUrl, fieldsFilled, "linkedin");
+  await tryFill(page, 'input[name="urls[Portfolio]"], input[name*="portfolio" i], input[name*="website" i]', candidate.portfolioUrl, fieldsFilled, "portfolio");
+  const resumeDoc = (documents || []).find((d) => /resume|cv/i.test(d.kind || d.filename || "")) || (documents || [])[0];
+  if (resumeDoc) {
+    let rp = null;
+    try { rp = await downloadDocument(resumeDoc, null, await tmpDir()); } catch {}
+    if (rp) {
+      const uploaded = await tryUpload(page, 'input[type="file"][name*="resume" i], input[type="file"]#resume, input[type="file"]', rp, fieldsFilled);
+      if (!uploaded) await tryUpload(page, 'input[type="file"]', rp, fieldsFilled);
+    }
+  }
+  for (const a of answers || []) {
+    if (!a.answer) continue;
+    const q = String(a.question).toLowerCase().slice(0, 30);
+    const inputs = await page.locator("input, textarea, select").all();
+    for (const inp of inputs) {
+      try {
+        const name = (await inp.getAttribute("name")) || "";
+        const id = (await inp.getAttribute("id")) || "";
+        const placeholder = (await inp.getAttribute("placeholder")) || "";
+        const haystack = [name, id, placeholder].join(" ").toLowerCase();
+        if (haystack.includes(q.slice(0, 20))) {
+          const type = (await inp.getAttribute("type")) || "text";
+          if (type.startsWith("select")) await inp.selectOption(String(a.answer)).catch(() => {});
+          else await inp.fill(String(a.answer));
+          fieldsFilled.push(`custom:${q.slice(0, 20)}`);
+        }
+      } catch { /* ignore */ }
+    }
+  }
   await fillGeneric(page, candidate, documents, answers, fieldsFilled);
-  // Greenhouse-specific: EEO dropdowns default to "Decline to self-identify" is fine.
 }
 
 async function fillLever(page, candidate, documents, answers, fieldsFilled) {
+  await tryFill(page, 'input[name="name"], input[name="full_name"]', candidate.fullName, fieldsFilled, "name");
+  await tryFill(page, 'input[name="email"]', candidate.email, fieldsFilled, "email");
+  await tryFill(page, 'input[name="phone"]', candidate.phone, fieldsFilled, "phone");
+  await tryFill(page, 'input[name="org"], input[name="current_company"]', candidate.headline, fieldsFilled, "org");
+  await tryFill(page, 'input[name="urls[LinkedIn]"], input[name*="linkedin" i]', candidate.linkedinUrl, fieldsFilled, "linkedin");
+  await tryFill(page, 'input[name="urls[GitHub]"], input[name*="github" i]', candidate.githubUrl, fieldsFilled, "github");
+  await tryFill(page, 'input[name="urls[Portfolio]"], input[name*="portfolio" i], input[name*="website" i]', candidate.portfolioUrl, fieldsFilled, "portfolio");
+  await tryFill(page, 'textarea[name="comments"], textarea[name="additional"]', candidate.summary, fieldsFilled, "comments");
+  const resumeDoc = (documents || []).find((d) => /resume|cv/i.test(d.kind || d.filename || "")) || (documents || [])[0];
+  if (resumeDoc) {
+    let rp = null;
+    try { rp = await downloadDocument(resumeDoc, null, await tmpDir()); } catch {}
+    if (rp) await tryUpload(page, 'input[type="file"], input[name="resume"]', rp, fieldsFilled);
+  }
+  for (const a of answers || []) {
+    if (!a.answer) continue;
+    const q = String(a.question).toLowerCase().slice(0, 30);
+    const inputs = await page.locator("input, textarea, select").all();
+    for (const inp of inputs) {
+      try {
+        const name = (await inp.getAttribute("name")) || "";
+        const placeholder = (await inp.getAttribute("placeholder")) || "";
+        const haystack = [name, placeholder].join(" ").toLowerCase();
+        if (haystack.includes(q.slice(0, 20))) {
+          const type = (await inp.getAttribute("type")) || "text";
+          if (type.startsWith("select")) await inp.selectOption(String(a.answer)).catch(() => {});
+          else await inp.fill(String(a.answer));
+          fieldsFilled.push(`custom:${q.slice(0, 20)}`);
+        }
+      } catch { /* ignore */ }
+    }
+  }
   await fillGeneric(page, candidate, documents, answers, fieldsFilled);
 }
 
 async function fillAshby(page, candidate, documents, answers, fieldsFilled) {
+  await tryFill(page, 'input[name="firstName"], input[name="first_name"]', candidate.fullName?.split(" ")[0], fieldsFilled, "first_name");
+  await tryFill(page, 'input[name="lastName"], input[name="last_name"]', candidate.fullName?.split(" ").slice(1).join(" "), fieldsFilled, "last_name");
+  await tryFill(page, 'input[name="email"]', candidate.email, fieldsFilled, "email");
+  await tryFill(page, 'input[name="phone"]', candidate.phone, fieldsFilled, "phone");
+  await tryFill(page, 'input[name="linkedinUrl"], input[name*="linkedin" i]', candidate.linkedinUrl, fieldsFilled, "linkedin");
+  await tryFill(page, 'input[name="githubUrl"], input[name*="github" i]', candidate.githubUrl, fieldsFilled, "github");
+  await tryFill(page, 'input[name="websiteUrl"], input[name*="website" i], input[name*="portfolio" i]', candidate.portfolioUrl, fieldsFilled, "portfolio");
+  await tryFill(page, 'textarea[name="coverLetter"], textarea[name*="cover" i]', candidate.summary, fieldsFilled, "cover_letter");
+  const resumeDoc = (documents || []).find((d) => /resume|cv/i.test(d.kind || d.filename || "")) || (documents || [])[0];
+  if (resumeDoc) {
+    let rp = null;
+    try { rp = await downloadDocument(resumeDoc, null, await tmpDir()); } catch {}
+    if (rp) await tryUpload(page, 'input[type="file"]', rp, fieldsFilled);
+  }
+  for (const a of answers || []) {
+    if (!a.answer) continue;
+    const q = String(a.question).toLowerCase().slice(0, 30);
+    const inputs = await page.locator("input, textarea, select").all();
+    for (const inp of inputs) {
+      try {
+        const name = (await inp.getAttribute("name")) || "";
+        const placeholder = (await inp.getAttribute("placeholder")) || "";
+        const haystack = [name, placeholder].join(" ").toLowerCase();
+        if (haystack.includes(q.slice(0, 20))) {
+          const type = (await inp.getAttribute("type")) || "text";
+          if (type.startsWith("select")) await inp.selectOption(String(a.answer)).catch(() => {});
+          else await inp.fill(String(a.answer));
+          fieldsFilled.push(`custom:${q.slice(0, 20)}`);
+        }
+      } catch { /* ignore */ }
+    }
+  }
   await fillGeneric(page, candidate, documents, answers, fieldsFilled);
 }
 
 async function fillSmartRecruiters(page, candidate, documents, answers, fieldsFilled) {
+  await tryFill(page, 'input[name="firstName"], input[name="first_name"]', candidate.fullName?.split(" ")[0], fieldsFilled, "first_name");
+  await tryFill(page, 'input[name="lastName"], input[name="last_name"]', candidate.fullName?.split(" ").slice(1).join(" "), fieldsFilled, "last_name");
+  await tryFill(page, 'input[name="email"]', candidate.email, fieldsFilled, "email");
+  await tryFill(page, 'input[name="phone"]', candidate.phone, fieldsFilled, "phone");
+  const resumeDoc = (documents || []).find((d) => /resume|cv/i.test(d.kind || d.filename || "")) || (documents || [])[0];
+  if (resumeDoc) {
+    let rp = null;
+    try { rp = await downloadDocument(resumeDoc, null, await tmpDir()); } catch {}
+    if (rp) await tryUpload(page, 'input[type="file"]', rp, fieldsFilled);
+  }
   await fillGeneric(page, candidate, documents, answers, fieldsFilled);
 }
 
 async function fillWorkday(page, candidate, documents, answers, fieldsFilled) {
-  // Workday requires account creation + multi-step wizard; generic fill is insufficient.
+  // Workday: account creation + multi-step wizard; generic fill is insufficient.
   await fillGeneric(page, candidate, documents, answers, fieldsFilled);
 }
 
@@ -218,6 +356,7 @@ const ADAPTERS = {
   generic: (page, c, d, a, f) => fillGeneric(page, c, d, a, f),
 };
 
+// ---------- Execution ----------
 async function executeTask(taskPayload) {
   const { task, application, job, candidate, documents, answers, submit } = taskPayload;
   const ats = detectAts(job.applicationUrl);
