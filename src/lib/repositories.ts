@@ -707,6 +707,8 @@ export async function getInterviewData(userId: string) {
     id: s(r.id), applicationId: s(r.application_id) || null, type: s(r.type), status: s(r.status),
     questions: parseJson<unknown[]>(s(r.questions, "[]"), []), answers: parseJson<unknown[]>(s(r.answers, "[]"), []),
     feedback: s(r.feedback) || null, score: nullableNum(r.score), createdAt: s(r.created_at),
+    interviewAt: s(r.interview_at) || null, interviewType: s(r.interview_type) || null,
+    interviewLocation: s(r.interview_location) || null, interviewer: s(r.interviewer) || null,
   }));
   return { applications, sessions };
 }

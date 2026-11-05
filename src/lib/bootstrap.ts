@@ -50,6 +50,10 @@ export async function bootstrapDatabase(): Promise<void> {
   if (!worker) {
     await run("INSERT INTO worker_status (id, name, status, last_heartbeat, meta) VALUES ('playwright-worker', 'Playwright browser worker', 'offline', NULL, '{}')");
   }
+  // Migrate interview_sessions to add scheduling columns (idempotent).
+  for (const col of ["interview_at TEXT", "interview_type TEXT", "interview_location TEXT", "interviewer TEXT"]) {
+    try { await run(`ALTER TABLE interview_sessions ADD COLUMN ${col}`); } catch { /* column exists */ }
+  }
   const meta = await get<{ key: string }>("SELECT key FROM app_meta WHERE key = 'bootstrapped'");
   if (!meta) await run("INSERT INTO app_meta (key, value) VALUES ('bootstrapped', ?)", [now]);
 }

@@ -385,6 +385,10 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
   answers TEXT NOT NULL DEFAULT '[]',
   feedback TEXT,
   score REAL,
+  interview_at TEXT,
+  interview_type TEXT,
+  interview_location TEXT,
+  interviewer TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
