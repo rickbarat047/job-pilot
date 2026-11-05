@@ -89,6 +89,37 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
+            <CardHeader><CardTitle>Resume fit (ATS)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="font-display text-2xl font-semibold tabular-nums">{Math.round(data.match.skillScore)}%</div>
+                <div className="text-xs text-muted-foreground">keyword overlap between your CV and this JD</div>
+              </div>
+              <Progress value={data.match.skillScore} />
+              {data.match.strengths.length ? (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">Matched keywords</div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {data.match.strengths.map((s: string) => (
+                      <span key={s} className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {data.match.missingRequirements.length ? (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">Add to your resume</div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {data.match.missingRequirements.map((s: string) => (
+                      <span key={s} className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {data.applicationId ? (
