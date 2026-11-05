@@ -52,6 +52,7 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -61,6 +62,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="JobPilot AI" />
         <link rel="apple-touch-icon" href="/icon.svg" />
+        {plausibleDomain ? (
+          <script defer data-domain={plausibleDomain} src="https://plausible.io/js/script.js" />
+        ) : null}
       </head>
       <body className={inter.variable}>
         <a

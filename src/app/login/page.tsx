@@ -5,6 +5,7 @@ import { Eye, EyeOff, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form-controls";
 import { AuthBrandPanel } from "@/components/auth-brand";
+import { analytics } from "@/lib/analytics";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function LoginPage() {
         setError(data.error || "Unable to sign in.");
         return;
       }
+      analytics.login();
       router.push("/dashboard");
       router.refresh();
     } catch {

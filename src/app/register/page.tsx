@@ -5,6 +5,7 @@ import { Eye, EyeOff, CircleAlert, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form-controls";
 import { AuthBrandPanel } from "@/components/auth-brand";
+import { analytics } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 const rules = [
@@ -44,6 +45,7 @@ export default function RegisterPage() {
         setError(data.error || "Unable to create account.");
         return;
       }
+      analytics.signup();
       router.push("/onboarding");
       router.refresh();
     } catch {
