@@ -15,8 +15,8 @@ import {
 /* Playful palette tokens (page-local)                                 */
 /* ------------------------------------------------------------------ */
 const RAINBOW = ["#FF5B5B", "#FF9F43", "#FFD93D", "#3DDC97", "#4DA6FF", "#8B5CFF", "#FF5B9A"];
-const PAPER = "#FFF8EE";
-const INK = "#1A1A1A";
+const PAPER = "var(--playful-bg)";
+const INK = "var(--playful-ink)";
 const TAPE = "#FDE68A";
 const DUCT = "#9CA3AF";
 
@@ -176,7 +176,7 @@ function MarqueeRibbon() {
   useEffect(() => setMounted(true), []);
   const items = [...marqueeWords, ...marqueeWords];
   return (
-    <div className="relative overflow-hidden py-6" style={{ background: INK, color: PAPER }}>
+    <div className="relative overflow-hidden py-6" style={{ background: "#1A1A1A", color: "#FFF8EE" }}>
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r" style={{ backgroundImage: `linear-gradient(to right, ${INK}, transparent)` }} aria-hidden="true" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l" style={{ backgroundImage: `linear-gradient(to left, ${INK}, transparent)` }} aria-hidden="true" />
       <div className={`flex w-max gap-10 whitespace-nowrap ${mounted && !reduced ? "animate-marquee" : ""}`}>
@@ -210,7 +210,7 @@ function PeelSection() {
         <h2 className="mt-3 font-display text-3xl font-black leading-tight tracking-tight sm:text-5xl" style={{ color: INK }}>
           From CV to interview,<br />in four calm steps.
         </h2>
-        <p className="mt-4 max-w-xl text-base" style={{ color: "#444" }}>
+        <p className="mt-4 max-w-xl text-base" style={{ color: "var(--playful-muted)" }}>
           JobPilot does the legwork. You stay the decision maker on every submission.
         </p>
         <ol className="relative mt-12 grid gap-6 md:grid-cols-4 md:gap-5">
@@ -223,7 +223,7 @@ function PeelSection() {
                 {index + 1}
               </span>
               <h3 className="mt-4 font-display text-lg font-bold" style={{ color: INK }}>{step.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "#444" }}>{step.body}</p>
+              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--playful-muted)" }}>{step.body}</p>
             </li>
           ))}
         </ol>
@@ -299,7 +299,7 @@ function TiltCard({ item, index }: { item: (typeof capabilities)[number]; index:
           <Icon className="h-5 w-5" aria-hidden="true" />
         </span>
         <h3 className="mt-4 font-display text-lg font-bold" style={{ color: INK }}>{item.title}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "#444" }}>{item.body}</p>
+        <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--playful-muted)" }}>{item.body}</p>
         {item.featured ? (
           <Link href="/register" className="mt-5 inline-flex w-fit items-center gap-1.5 rounded-lg px-1 py-2 text-sm font-bold transition-opacity hover:opacity-70" style={{ color: INK }}>
             Try job discovery <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -346,15 +346,15 @@ function MatchRow({ item }: { item: (typeof previewMatches)[number] }) {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-bold" style={{ color: INK }}>{item.title}</div>
-          <div className="truncate text-xs" style={{ color: "#555" }}>{item.company}</div>
+          <div className="truncate text-xs" style={{ color: "var(--playful-muted)" }}>{item.company}</div>
         </div>
         <div className={`shrink-0 text-sm font-black tabular-nums ${tone}`} style={{ color: tone ? undefined : INK }}>{item.score}%</div>
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full" style={{ background: "#E5E5E5" }}>
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full" style={{ background: "var(--playful-border)" }}>
           <div className="h-full rounded-full" style={{ width: `${item.score}%`, background: RAINBOW[item.score % RAINBOW.length] }} />
         </div>
-        <span className="shrink-0 text-[10px] font-bold" style={{ color: "#555" }}>{item.tag}</span>
+        <span className="shrink-0 text-[10px] font-bold" style={{ color: "var(--playful-muted)" }}>{item.tag}</span>
       </div>
     </div>
   );
@@ -403,7 +403,7 @@ export default function LandingPage() {
             <div className="space-y-6">
               <p
                 className="inline-flex items-center gap-2 rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest"
-                style={{ borderColor: INK, background: "white", color: INK, boxShadow: `3px 3px 0 0 ${INK}` }}
+                style={{ borderColor: INK, background: "var(--playful-card)", color: INK, boxShadow: `3px 3px 0 0 ${INK}` }}
               >
                 <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                 Built for India&apos;s next generation
@@ -432,7 +432,7 @@ export default function LandingPage() {
                   Already in motion.
                 </motion.span>
               </h1>
-              <p className="max-w-xl text-lg leading-relaxed" style={{ color: "#444" }}>
+              <p className="max-w-xl text-lg leading-relaxed" style={{ color: "var(--playful-muted)" }}>
                 Discover relevant jobs across India, create tailored applications, and manage your entire
                 job search with an intelligent career assistant that keeps you in control.
               </p>
@@ -447,12 +447,12 @@ export default function LandingPage() {
                 <a
                   href="#how-it-works"
                   className="inline-flex h-12 w-full items-center justify-center rounded-xl border-2 px-6 text-sm font-bold transition-all hover:-translate-y-0.5 active:translate-y-0.5 sm:w-auto"
-                  style={{ background: "white", color: INK, borderColor: INK, boxShadow: `4px 4px 0 0 ${INK}` }}
+                  style={{ background: "var(--playful-card)", color: INK, borderColor: INK, boxShadow: `4px 4px 0 0 ${INK}` }}
                 >
                   Explore how it works
                 </a>
               </div>
-              <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium" style={{ color: "#444" }}>
+              <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium" style={{ color: "var(--playful-muted)" }}>
                 {["Approval-first", "CV-true matching", "Made for India"].map((item, i) => (
                   <li key={item} className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" style={{ color: RAINBOW[i] }} /> {item}
@@ -466,7 +466,7 @@ export default function LandingPage() {
               <div className="flex justify-center">
                 <TapeRoll />
               </div>
-              <p className="text-right text-[11px] font-bold uppercase tracking-widest" style={{ color: "#777" }}>Illustrative preview</p>
+              <p className="text-right text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--playful-muted)" }}>Illustrative preview</p>
               <PreviewFrame title="Job discovery" label="Demo data">
                 {previewMatches.map((item) => (
                   <MatchRow key={item.title} item={item} />
@@ -475,11 +475,11 @@ export default function LandingPage() {
               <PreviewFrame title="Application tracker" label="Demo data">
                 <div className="space-y-2.5">
                   {previewTracker.map((item, index) => (
-                    <div key={item.role} className="flex items-center gap-3 rounded-xl border-2 p-3" style={{ borderColor: INK, background: "white" }}>
+                    <div key={item.role} className="flex items-center gap-3 rounded-xl border-2 p-3" style={{ borderColor: INK, background: "var(--playful-card)" }}>
                       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 text-[11px] font-black" style={{ borderColor: INK, background: RAINBOW[index], color: "white" }}>{index + 1}</span>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-bold" style={{ color: INK }}>{item.role}</div>
-                        <div className="truncate text-xs" style={{ color: "#555" }}>{item.state}</div>
+                        <div className="truncate text-xs" style={{ color: "var(--playful-muted)" }}>{item.state}</div>
                       </div>
                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#3DDC97" }} aria-hidden="true" />
                     </div>
@@ -494,7 +494,7 @@ export default function LandingPage() {
       <MarqueeRibbon />
 
       {/* ---------- TRUST ---------- */}
-      <section id="product" className="relative scroll-mt-20 border-y-2" style={{ borderColor: INK, background: "white" }}>
+      <section id="product" className="relative scroll-mt-20 border-y-2" style={{ borderColor: INK, background: "var(--playful-card)" }}>
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-6 md:py-20">
           <div className="max-w-2xl">
             <p className="text-sm font-bold uppercase tracking-widest" style={{ color: "#FF5B5B" }}>Trust by design</p>
@@ -516,16 +516,16 @@ export default function LandingPage() {
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <h3 className="mt-4 font-display font-bold" style={{ color: INK }}>{point.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "#444" }}>{point.body}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--playful-muted)" }}>{point.body}</p>
                 </div>
               );
             })}
-            <div className="flex h-full flex-col justify-between rounded-2xl border-2 p-5" style={{ borderColor: INK, background: INK, color: PAPER, boxShadow: `4px 4px 0 0 #FF5B5B` }}>
+            <div className="flex h-full flex-col justify-between rounded-2xl border-2 p-5" style={{ borderColor: "#1A1A1A", background: "#1A1A1A", color: "#FFF8EE", boxShadow: `4px 4px 0 0 #FF5B5B` }}>
               <ShieldCheck className="h-5 w-5" aria-hidden="true" style={{ color: "#3DDC97" }} />
               <p className="mt-6 font-display text-xl font-bold leading-snug">
                 If it isn&apos;t true, JobPilot won&apos;t write it.
               </p>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: "#bbb" }}>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--playful-muted)" }}>
                 Our matching and documents are built strictly from what your CV already says.
               </p>
             </div>
@@ -554,7 +554,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- PRIVACY (dark, taped) ---------- */}
-      <section id="privacy" className="relative scroll-mt-20 overflow-hidden" style={{ background: INK, color: PAPER }}>
+      <section id="privacy" className="relative scroll-mt-20 overflow-hidden" style={{ background: "#1A1A1A", color: "#FFF8EE" }}>
         {/* duct tape strips */}
         <div className="pointer-events-none absolute left-0 top-0 h-6 w-full opacity-60" style={{ background: `repeating-linear-gradient(90deg, ${DUCT} 0 40px, #7a828e 40px 80px)` }} aria-hidden="true" />
         <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-2 md:items-center md:py-24 sm:px-6">
@@ -563,7 +563,7 @@ export default function LandingPage() {
             <h2 className="font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl">
               Your approval is the last word. Every time.
             </h2>
-            <p className="leading-relaxed" style={{ color: "#bbb" }}>
+            <p className="leading-relaxed" style={{ color: "var(--playful-muted)" }}>
               JobPilot prepares applications; it never sends them on its own. Your CV and documents stay yours, and the agent only acts on what you allow.
             </p>
             <Link href="/privacy" className="inline-flex w-fit items-center gap-1.5 rounded-lg px-1 py-2 text-sm font-bold transition-opacity hover:opacity-80" style={{ color: "#3DDC97" }}>
@@ -593,7 +593,7 @@ export default function LandingPage() {
           <h2 className="font-display text-3xl font-black tracking-tight sm:text-4xl" style={{ color: INK }}>
             Ready to move?
           </h2>
-          <p className="mt-3" style={{ color: "#444" }}>
+          <p className="mt-3" style={{ color: "var(--playful-muted)" }}>
             Create your free agent and start from your real CV. Applications stay under your control.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -607,7 +607,7 @@ export default function LandingPage() {
             <Link
               href="/login"
               className="inline-flex h-12 w-full items-center justify-center rounded-xl border-2 px-7 text-sm font-bold transition-all hover:-translate-y-0.5 active:translate-y-0.5 sm:w-auto"
-              style={{ background: "white", color: INK, borderColor: INK, boxShadow: `4px 4px 0 0 ${INK}` }}
+              style={{ background: "var(--playful-card)", color: INK, borderColor: INK, boxShadow: `4px 4px 0 0 ${INK}` }}
             >
               Sign in
             </Link>
@@ -616,20 +616,20 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- DUCT-TAPED FOOTER ---------- */}
-      <footer className="relative border-t-2" style={{ borderColor: INK, background: "white" }}>
+      <footer className="relative border-t-2" style={{ borderColor: INK, background: "var(--playful-card)" }}>
         <div className="pointer-events-none absolute left-0 top-[-12px] h-6 w-full opacity-70" style={{ background: `repeating-linear-gradient(90deg, ${DUCT} 0 50px, #7a828e 50px 100px)` }} aria-hidden="true" />
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-lg border-2 text-base font-black" style={{ borderColor: INK, background: "#FF5B5B", color: INK, boxShadow: `3px 3px 0 0 ${INK}` }}>J</span>
             <span className="font-display text-lg font-black tracking-tight" style={{ color: INK }}>JobPilot AI</span>
           </div>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium" aria-label="Footer" style={{ color: "#444" }}>
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium" aria-label="Footer" style={{ color: "var(--playful-muted)" }}>
             <a href="/login" className="transition-colors hover:underline">Sign in</a>
             <a href="/register" className="transition-colors hover:underline">Get started</a>
             <a href="/privacy" className="transition-colors hover:underline">Privacy policy</a>
             <a href="/terms" className="transition-colors hover:underline">Terms</a>
           </nav>
-          <p className="text-xs font-medium" style={{ color: "#777" }}>© {new Date().getFullYear()} JobPilot AI</p>
+          <p className="text-xs font-medium" style={{ color: "var(--playful-muted)" }}>© {new Date().getFullYear()} JobPilot AI</p>
         </div>
       </footer>
     </main>

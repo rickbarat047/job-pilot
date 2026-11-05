@@ -164,9 +164,20 @@ html.viewport-repaint body {
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 
-@supports (padding: env(safe-area-inset-bottom)) {
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-  .bottom-safe { bottom: env(safe-area-inset-bottom); }
+/* Playful landing page tokens (dark-mode aware) */
+:root {
+  --playful-bg: #FFF8EE;
+  --playful-ink: #1A1A1A;
+  --playful-muted: #444444;
+  --playful-card: #FFFFFF;
+  --playful-border: #1A1A1A;
+}
+.dark {
+  --playful-bg: #0B0E14;
+  --playful-ink: #E7EAF0;
+  --playful-muted: #8B93A3;
+  --playful-card: #11151C;
+  --playful-border: #232936;
 }
 
 @keyframes marquee-x {
