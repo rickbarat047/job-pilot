@@ -102,6 +102,8 @@ body {
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 /* Prevent any media from overflowing containers */
@@ -109,6 +111,13 @@ img, video, canvas, svg, iframe {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+/* Ensure long text wraps instead of overflowing */
+h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, div {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 /*
