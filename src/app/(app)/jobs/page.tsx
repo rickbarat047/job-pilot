@@ -227,7 +227,7 @@ export default function JobsPage() {
               key={`expanded-${expandedJobId}`}
               layoutId={`job-${expandedJobId}`}
               initial={{ opacity: 1 }}
-              className="min-w-0 rounded-3xl border border-border bg-card p-6 shadow-lg sm:p-8"
+              className="min-w-0 rounded-3xl border border-border bg-card p-6 shadow-lg sm:p-8 overflow-hidden"
             >
               <button onClick={() => setExpandedJobId(null)} className="mb-3 text-xs font-medium text-primary hover:underline">← Back to list</button>
               {/* Expanded content for the selected job */}
