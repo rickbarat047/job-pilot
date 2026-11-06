@@ -80,7 +80,7 @@ export function JobCard({ job, score, action }: { job: JobCardData; score?: numb
           </div>
         ) : null}
       </div>
-      {typeof score === "number" ? <Progress value={score} className="mt-3" /> : null}
+      {typeof score === "number" ? null : null}
       {action ? <div className="mt-3 flex flex-wrap gap-2">{action}</div> : null}
     </div>
   );

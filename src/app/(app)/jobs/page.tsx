@@ -238,9 +238,6 @@ export default function JobsPage() {
                   <div className="space-y-4">
                     <h2 className="font-display text-xl font-semibold sm:text-2xl">{item.job.title}</h2>
                     <div className="text-sm text-muted-foreground">{item.job.companyName} · {item.job.location} · {item.job.employmentType}</div>
-                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${item.match.overallScore}%` }} />
-                    </div>
                     <p className="text-sm">{item.match.recommendedAction || "No recommendation yet."}</p>
                     <div className="flex flex-wrap gap-2">
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium">via {item.job.source}</span>
