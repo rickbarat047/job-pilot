@@ -58,7 +58,7 @@ export function JobCard({ job, score, action }: { job: JobCardData; score?: numb
       <div className="flex items-start gap-3">
         <Avatar name={job.companyName} size="md" />
         <div className="min-w-0 flex-1">
-          <Link href={`/jobs/${job.id}`} className="inline-block min-h-[36px] py-2 -my-2 text-base font-semibold leading-snug break-words hover:text-primary sm:text-lg">
+          <Link href={`/jobs/${job.id}`} className="min-h-[36px] py-2 -my-2 text-base font-semibold leading-snug break-words hover:text-primary sm:text-lg max-w-full">
             {job.title}
           </Link>
           <div className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground break-words sm:text-sm">
