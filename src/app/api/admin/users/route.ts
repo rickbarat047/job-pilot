@@ -8,26 +8,45 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const user = await requireApiUser();
-    // Only allow users with approval_required permission (admin-like access)
     const perms = await getPermissionsForUser(user.id);
     if (perms.submitApplications === "never") {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    const users = await all<{
-      id: string;
-      email: string;
-      name: string;
-      created_at: string;
-      last_login_at: string | null;
-      login_count: number | null;
-      deleted_at: string | null;
-    }>(
-      `SELECT u.id, u.email, u.name, u.created_at, u.last_login_at, u.login_count, u.deleted_at
-       FROM users u
-       WHERE u.deleted_at IS NULL
-       ORDER BY u.last_login_at DESC NULLS LAST, u.created_at DESC`
-    );
+    // Try query with login tracking columns first
+    let users: any[] = [];
+    try {
+      users = await all<{
+        id: string;
+        email: string;
+        name: string;
+        created_at: string;
+        last_login_at: string | null;
+        login_count: number | null;
+        deleted_at: string | null;
+      }>(
+        `SELECT u.id, u.email, u.name, u.created_at, u.last_login_at, u.login_count, u.deleted_at
+         FROM users u
+         WHERE u.deleted_at IS NULL
+         ORDER BY u.last_login_at DESC NULLS LAST, u.created_at DESC`
+      );
+    } catch {
+      // Fallback: query without login tracking columns (if migration hasn't run yet)
+      users = await all<{
+        id: string;
+        email: string;
+        name: string;
+        created_at: string;
+        last_login_at: string | null;
+        login_count: number | null;
+        deleted_at: string | null;
+      }>(
+        `SELECT u.id, u.email, u.name, u.created_at, NULL as last_login_at, 0 as login_count, u.deleted_at
+         FROM users u
+         WHERE u.deleted_at IS NULL
+         ORDER BY u.created_at DESC`
+      );
+    }
 
     // Get session count per user (active sessions)
     const sessions = await all<{ user_id: string; c: number }>(

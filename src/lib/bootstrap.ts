@@ -56,7 +56,16 @@ export async function bootstrapDatabase(): Promise<void> {
   }
   // Migrate users to add login tracking columns (idempotent).
   for (const col of ["last_login_at TEXT", "login_count INTEGER DEFAULT 0"]) {
-    try { await run(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* column exists */ }
+    try {
+      await run(`ALTER TABLE users ADD COLUMN ${col}`);
+      console.log(`Added column ${col} to users table`);
+    } catch (err: any) {
+      if (err?.message?.includes("duplicate column")) {
+        // Column already exists, ignore
+      } else {
+        console.warn(`Could not add column ${col}:`, err);
+      }
+    }
   }
   const meta = await get<{ key: string }>("SELECT key FROM app_meta WHERE key = 'bootstrapped'");
   if (!meta) await run("INSERT INTO app_meta (key, value) VALUES ('bootstrapped', ?)", [now]);
