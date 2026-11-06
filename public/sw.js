@@ -1,7 +1,12 @@
 // Service worker for JobPilot AI PWA
-const CACHE_NAME = "jobpilot-v2";
+const CACHE_NAME = "jobpilot-v3";
 const OFFLINE_URL = "/offline.html";
-const PRECACHE = ["/", "/manifest.json", "/icon.svg", "/offline.html"];
+const PRECACHE = [
+  "/",
+  "/manifest-v2.json",
+  "/icon-v2.svg",
+  "/offline.html",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -25,8 +30,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: "/icon-v2.svg",
+      badge: "/icon-v2.svg",
       data: { url: data.url || "/" },
     })
   );
