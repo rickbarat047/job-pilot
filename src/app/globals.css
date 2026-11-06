@@ -84,6 +84,7 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
+  overflow-x: hidden;
   /* Stops double-tap zoom from turning a stray tap into a pinned zoomed view. */
   touch-action: manipulation;
 }
