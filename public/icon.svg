@@ -1,25 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="appGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#087F68;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#045F53;stop-opacity:1" />
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity="0.25"/>
-    </filter>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="512" height="512">
   <!-- Background rounded square -->
-  <rect width="512" height="512" rx="112" fill="url(#appGradient)" filter="url(#shadow)"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="#0A2A24"/>
+  
+  <!-- Gradient background emulation -->
+  <ellipse cx="300" cy="300" rx="200" ry="180" fill="#0E5E4E" opacity="0.6"/>
+  <ellipse cx="700" cy="700" rx="180" ry="160" fill="#0A3D34" opacity="0.8"/>
   
   <!-- Glow accent top-left -->
-  <ellipse cx="140" cy="140" rx="70" ry="50" fill="#FFFFFF" opacity="0.15"/>
-  
-  <!-- "J" lettermark -->
-  <text x="256" y="300" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="280" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="-4">J</text>
+  <ellipse cx="280" cy="280" rx="140" ry="100" fill="#FFFFFF" opacity="0.08"/>
   
   <!-- Sparkle accent top-right -->
-  <path d="M440 160 L430 170 L410 170 L420 180 L420 190 L430 180 L440 190 L450 180 L460 170 L440 170 Z" fill="#FDE68A"/>
+  <path d="M680 280 L660 300 L620 300 L640 320 L640 340 L660 320 L680 340 L700 320 L720 340 L700 300 Z" fill="#FDE68A"/>
   
-  <!-- Bottom accent bar -->
-  <rect x="160" y="440" width="192" height="12" rx="6" fill="#FFFFFF" opacity="0.15"/>
+  <!-- Outer glow -->
+  <path d="M64 64 h896 v896 H64 z" fill="url(#glow)" opacity="0.3"/>
+  
+  <defs>
+    <linearGradient id="appGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0E5E4E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#087F68;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#2BC5A0;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#087F68;stop-opacity:0" />
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+    <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- J lettermark main body -->
+  <path d="M520 240 h-80 c-20 0 -30 15 -30 35 v320 c0 15 15 35 30 35 h120 c45 0 60 -60 60 -120 v-240 c0 -20 -15 -35 -60 -35 z" fill="#FFFFFF"/>
+  
+  <!-- J inner glow -->
+  <path d="M520 240 h-70 c-10 0 -20 10 -20 25 v300 c0 10 15 25 20 25 h110 c40 0 50 -50 50 -110 v-230 c0 -10 -5 -25 -30 -25 z" fill="#FFFFFF" opacity="0.3"/>
+  
+  <!-- Swoosh arc -->
+  <path d="M320 480 Q380 420 480 340 Q540 260 600 300 Q660 340 700 300 Q740 260 800 320 Q860 380 720 460 Q580 540 320 480 Z" fill="#FFFFFF" opacity="0.1"/>
+  
+  <!-- Sparkle accent top-right -->
+  <path d="M690 290 L660 310 L620 310 L640 330 L640 350 L660 330 L680 350 L700 330 L720 350 L700 310 Z" fill="#FDE68A"/>
+  
+  <!-- Sparkle glow -->
+  <circle cx="680" cy="320" r="30" fill="#FFFFFF" opacity="0.6" filter="url(#glowFilter)"/>
 </svg>
