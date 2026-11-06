@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  deleted_at TEXT
+  deleted_at TEXT,
+  last_login_at TEXT,
+  login_count INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sessions (

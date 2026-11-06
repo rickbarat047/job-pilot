@@ -54,6 +54,10 @@ export async function bootstrapDatabase(): Promise<void> {
   for (const col of ["interview_at TEXT", "interview_type TEXT", "interview_location TEXT", "interviewer TEXT"]) {
     try { await run(`ALTER TABLE interview_sessions ADD COLUMN ${col}`); } catch { /* column exists */ }
   }
+  // Migrate users to add login tracking columns (idempotent).
+  for (const col of ["last_login_at TEXT", "login_count INTEGER DEFAULT 0"]) {
+    try { await run(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* column exists */ }
+  }
   const meta = await get<{ key: string }>("SELECT key FROM app_meta WHERE key = 'bootstrapped'");
   if (!meta) await run("INSERT INTO app_meta (key, value) VALUES ('bootstrapped', ?)", [now]);
 }

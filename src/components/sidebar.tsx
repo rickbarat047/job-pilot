@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Search, Kanban, User, Zap, Building2, Target, Settings, LogOut, FileText,
+  Activity,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,12 @@ const navGroups: { label: string; items: { href: string; label: string; icon: ty
       { href: "/cv-builder", label: "AI CV builder", icon: FileText },
       { href: "/automation", label: "Automation", icon: Zap },
       { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { href: "/admin/users", label: "User activity", icon: Activity },
     ],
   },
 ];
