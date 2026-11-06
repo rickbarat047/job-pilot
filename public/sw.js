@@ -1,5 +1,5 @@
 // Service worker for JobPilot AI PWA
-const CACHE_NAME = "jobpilot-v1";
+const CACHE_NAME = "jobpilot-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = ["/", "/manifest.json", "/icon.svg", "/offline.html"];
 
