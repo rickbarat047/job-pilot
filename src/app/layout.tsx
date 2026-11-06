@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { CookieConsent } from "@/components/cookie-consent";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { InstallPrompt } from "@/components/install-prompt";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -79,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CookieConsent />
         <ServiceWorkerRegister />
         <InstallPrompt />
+        <Analytics />
       </body>
     </html>
   );
