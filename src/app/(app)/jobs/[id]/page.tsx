@@ -11,6 +11,17 @@ import { TailorButton } from "@/components/tailor-button";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { cn } from "@/lib/utils";
 
+interface SalaryInsight {
+  hasData: boolean;
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  count: number;
+  currency: string;
+  query: string;
+  location: string;
+}
+
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
@@ -19,6 +30,22 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const id = decodeURIComponent(rawId);
   const data = await getJobDetailForUser(user.id, id);
   if (!data) redirect("/jobs");
+
+  // Fetch salary insights for similar jobs
+  const titleKeyword = data.job.title.split(/\s+/).slice(0, 3).join(" ");
+  const location = (data.job.location || data.job.city || "") as string;
+  let salaryInsight: SalaryInsight | null = null;
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/jobs/salary-insights?q=${encodeURIComponent(titleKeyword)}&location=${encodeURIComponent(location)}`,
+      { cache: "no-store" },
+    );
+    if (res.ok) {
+      salaryInsight = await res.json();
+    }
+  } catch {
+    // Salary insights are optional; skip on error
+  }
 
   return (
     <div className="space-y-5">
@@ -111,11 +138,42 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                   <div className="text-xs font-medium text-muted-foreground">Add to your resume</div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {data.match.missingRequirements.map((s: string) => (
-                      <span key={s} className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">{s}</span>
+                      <span key={s} className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-emerald-700">{s}</span>
                     ))}
                   </div>
                 </div>
               ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Salary insights</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {salaryInsight && salaryInsight.hasData ? (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground">Market rate (last 50 similar jobs)</div>
+                      <div className="font-display text-2xl font-semibold tabular-nums">
+                        {salaryInsight.currency} {Math.round(salaryInsight.min || 0)} — {Math.round(salaryInsight.max || 0)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Average: {salaryInsight.currency} {Math.round(salaryInsight.avg || 0)} · {salaryInsight.count} jobs
+                      </div>
+                    </div>
+                    {data.job.salaryMin && data.job.salaryMax ? (
+                      <Progress value={Math.min(100, Math.round(((data.job.salaryMin! + data.job.salaryMax!) / 2) / (salaryInsight.max || 1) * 100))} />
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Based on {salaryInsight.count} similar {salaryInsight.query} jobs in {salaryInsight.location}.
+                  </p>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-xs text-muted-foreground">No salary data available for similar jobs yet.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
