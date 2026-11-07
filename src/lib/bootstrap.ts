@@ -69,6 +69,26 @@ export async function bootstrapDatabase(): Promise<void> {
   }
   const meta = await get<{ key: string }>("SELECT key FROM app_meta WHERE key = 'bootstrapped'");
   if (!meta) await run("INSERT INTO app_meta (key, value) VALUES ('bootstrapped', ?)", [now]);
+  // Create company_reviews table if not exists
+  await run(
+    `CREATE TABLE IF NOT EXISTS company_reviews (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      title TEXT,
+      comment TEXT,
+      pros TEXT,
+      cons TEXT,
+      would_recommend INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(user_id, company_id)
+    )`
+  );
+  await run(
+    `CREATE INDEX IF NOT EXISTS idx_company_reviews_company ON company_reviews(company_id)`
+  );
 }
 
 export async function ensureBootstrap(): Promise<void> {
