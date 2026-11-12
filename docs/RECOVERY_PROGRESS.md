@@ -15,14 +15,36 @@
 
 ## Changes made this stage
 
-### Fix: stop leaking the demo password via the seed endpoint response
+### Targeted fix: GitHub Actions browser worker (scripts/browser-worker.mjs)
+
+Scope: only `scripts/browser-worker.mjs`, new helper `scripts/browser-worker-lib.mjs`, new tests `src/lib/browser-worker.test.ts`. No schema, auth, features, or deployment config changed. Workflow `.github/workflows/browser-worker.yml` left unchanged (ONE_SHOT=1 and */10 schedule preserved).
+
+Changes:
+- Env validation now fails clearly when `APP_URL` is missing (previously defaulted to localhost) and when `WORKER_TOKEN` is missing.
+- `heartbeat(status, meta)` now takes an explicit worker status (`online`/`offline`) and sends `status` as a top-level JSON property; `meta` no longer carries/overrides status.
+- Online heartbeat sent when the worker starts; periodic online heartbeats continue during processing.
+- Graceful shutdown sends an `offline` heartbeat.
+- `api()` throws an `ApiError` carrying the HTTP status; 401 fails the workflow with a useful message; 404 and 5xx are not treated as success (they propagate instead of being swallowed).
+- Empty task queue (`!claimed.task`) is explicitly treated as non-error.
+- Shutdown tracking: an earlier processing failure is preserved and reflected in the exit code even if the offline heartbeat fails (via `shutdownExitCode`).
+- `WORKER_TOKEN` is never logged.
+- 90-second online threshold in `workerIsOnline()` left untouched.
+
+Tests added (`src/lib/browser-worker.test.ts`): 17 tests covering env validation, heartbeat payloads (online/offline, top-level status, invalid status), auth-failure detection, empty-queue handling, HTTP status classification, and shutdown exit codes.
+
+### Earlier fix: stop leaking the demo password via the seed endpoint response
 - File: `src/lib/seed.ts`
-- Change: the `seedDemo()` return message no longer echoes the hardcoded demo password (`Demo@12345`). The endpoint still creates/uses the demo account with the configured password, but the credential is not returned in the API response.
-- Why: `/api/dev/seed` (gated by `CRON_SECRET` in production) returned the plaintext demo password in its JSON body, exposing a credential to anyone able to call the endpoint.
-- Checks: typecheck PASS; vitest 32/32 PASS.
+- Change: the `seedDemo()` return message no longer echoes the hardcoded demo password (`Demo@12345`).
+- Checks: typecheck PASS; vitest 32/32 PASS at that time.
 
 ## Remaining work / next recommended task
 
 The recovery directive (P0 → foundation → core workflow → frontend → testing → deployment) cannot be executed against a documented P0 list because the audit report is missing. Recommended next step: run the full audit (Phase A–J from the original audit prompt) and write `docs/RECOVERY_AUDIT.md` before touching P0 issues, so fixes are driven by verified findings rather than guesses. Alternatively, the operator can point me at a specific P0 to fix first.
 
-No production deployment was performed. Changes are local on `recovery/main` only.
+## Test results (browser worker stage)
+
+- `npm run typecheck` (`tsc --noEmit`): PASS (0 errors).
+- `npm test` (`vitest run`): PASS — 9 test files, 49 tests (17 new browser-worker tests).
+- `node --check scripts/browser-worker.mjs`: PASS.
+- `node --check scripts/browser-worker-lib.mjs`: PASS.
+- No production deployment, commit, or push performed (per instruction).

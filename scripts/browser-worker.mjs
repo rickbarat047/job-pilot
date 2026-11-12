@@ -16,18 +16,21 @@
 //   BROWSER_TIMEOUT_MS     default 120000
 //   ONE_SHOT               if "1", process one task then exit
 
-const APP_URL = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
-const WORKER_TOKEN = process.env.WORKER_TOKEN || "";
+import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, shutdownExitCode, shouldFailWorkflowOnHttpStatus } from "./browser-worker-lib.mjs";
+
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 5000);
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 20000);
 const HEADLESS = process.env.HEADLESS !== "false";
 const BROWSER_TIMEOUT_MS = Number(process.env.BROWSER_TIMEOUT_MS || 120000);
 const ONE_SHOT = process.env.ONE_SHOT === "1";
 
-if (!WORKER_TOKEN) {
-  console.error("WORKER_TOKEN is required.");
+const envCheck = validateEnv(process.env);
+if (!envCheck.ok) {
+  for (const e of envCheck.errors) console.error(e);
   process.exit(1);
 }
+const APP_URL = String(process.env.APP_URL).replace(/\/$/, "");
+const WORKER_TOKEN = String(process.env.WORKER_TOKEN);
 
 let playwright;
 try {
@@ -54,15 +57,28 @@ async function api(path, { method = "GET", body, token = true } = {}) {
   const text = await res.text();
   let json;
   try { json = JSON.parse(text); } catch { json = { raw: text }; }
-  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) {
+    // Never treat 401/404/5xx as success; surface the status for callers.
+    throw createApiError(res.status, method, path, text);
+  }
   return json;
 }
 
-async function heartbeat(meta = {}) {
+async function heartbeat(status = "online", meta = {}) {
+  const body = buildHeartbeatBody(status, meta, WORKER_TOKEN);
   try {
-    await api("/api/automation/worker", { method: "POST", body: { status: "online", meta, token: WORKER_TOKEN } });
+    await api("/api/automation/worker", { method: "POST", body });
   } catch (err) {
     console.error("heartbeat failed", err instanceof Error ? err.message : err);
+    if (isAuthFailure(err)) {
+      // A 401 means the worker token is wrong; fail the workflow clearly.
+      console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
+      process.exit(1);
+    }
+    // Re-throw server errors so they are not silently treated as success.
+    if (err && typeof err.status === "number" && shouldFailWorkflowOnHttpStatus(err.status)) {
+      throw err;
+    }
   }
 }
 
@@ -449,10 +465,17 @@ async function processOne() {
     claimed = await api("/api/automation/worker/tasks/claim", { method: "POST", body: { token: WORKER_TOKEN } });
   } catch (err) {
     console.error("claim failed", err instanceof Error ? err.message : err);
+    if (isAuthFailure(err)) {
+      console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
+      process.exit(1);
+    }
+    if (err && typeof err.status === "number" && shouldFailWorkflowOnHttpStatus(err.status)) {
+      throw err;
+    }
     return false;
   }
-  if (!claimed?.task) {
-    return false;
+  if (isEmptyQueueResult(claimed)) {
+    return false; // empty queue is not an error
   }
   const taskPayload = claimed;
   const taskId = taskPayload.task.id;
@@ -486,32 +509,71 @@ async function processOne() {
     console.log("reported", taskId, result.status);
   } catch (err) {
     console.error("result post failed", err instanceof Error ? err.message : err);
+    if (isAuthFailure(err)) {
+      console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
+      process.exit(1);
+    }
+    if (err && typeof err.status === "number" && shouldFailWorkflowOnHttpStatus(err.status)) {
+      throw err;
+    }
   }
   return true;
 }
 
 async function main() {
   console.log(`JobPilot browser worker starting; polling ${APP_URL} every ${POLL_INTERVAL_MS}ms`);
-  const hb = setInterval(() => heartbeat({ worker: "playwright", version: "2-ats-adapters", ats: "auto" }), HEARTBEAT_INTERVAL_MS);
-  heartbeat({ worker: "playwright", version: "2-ats-adapters", ats: "auto" });
+  const meta = { worker: "playwright", version: "2-ats-adapters", ats: "auto" };
+  // Online heartbeat when the worker starts.
+  await heartbeat("online", meta).catch(() => {});
+  const hb = setInterval(() => { heartbeat("online", meta).catch(() => {}); }, HEARTBEAT_INTERVAL_MS);
 
-  if (ONE_SHOT) {
-    await processOne();
-    clearInterval(hb);
-    await heartbeat({ worker: "playwright", version: "2-ats-adapters", status: "offline" }).catch(() => {});
-    process.exit(0);
-  }
+  let processingFailed = false;
+  let offlineHeartbeatFailed = false;
 
-  while (!stopping) {
-    const hadWork = await processOne();
-    if (stopping) break;
-    if (!hadWork) {
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  try {
+    if (ONE_SHOT) {
+      try {
+        await processOne();
+      } catch (err) {
+        processingFailed = true;
+        console.error("processing failed", err instanceof Error ? err.message : err);
+      }
+      clearInterval(hb);
+      try {
+        await heartbeat("offline", meta);
+      } catch (err) {
+        offlineHeartbeatFailed = true;
+        console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
+      }
+      process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed));
     }
+
+    while (!stopping) {
+      let hadWork = false;
+      try {
+        hadWork = await processOne();
+      } catch (err) {
+        processingFailed = true;
+        console.error("processing failed", err instanceof Error ? err.message : err);
+        break;
+      }
+      if (stopping) break;
+      if (!hadWork) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+      }
+    }
+  } finally {
+    clearInterval(hb);
   }
-  clearInterval(hb);
-  await heartbeat({ worker: "playwright", version: "2-ats-adapters", status: "offline" }).catch(() => {});
-  process.exit(0);
+
+  // Graceful shutdown: offline heartbeat must not conceal an earlier processing failure.
+  try {
+    await heartbeat("offline", meta);
+  } catch (err) {
+    offlineHeartbeatFailed = true;
+    console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
+  }
+  process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed));
 }
 
 main().catch((err) => {
