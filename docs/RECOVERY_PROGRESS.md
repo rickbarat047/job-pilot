@@ -44,7 +44,17 @@ The recovery directive (P0 → foundation → core workflow → frontend → tes
 ## Test results (browser worker stage)
 
 - `npm run typecheck` (`tsc --noEmit`): PASS (0 errors).
-- `npm test` (`vitest run`): PASS — 9 test files, 49 tests (17 new browser-worker tests).
+- `npm test` (`vitest run`): PASS — 9 test files, 56 tests (24 browser-worker tests).
 - `node --check scripts/browser-worker.mjs`: PASS.
 - `node --check scripts/browser-worker-lib.mjs`: PASS.
 - No production deployment, commit, or push performed (per instruction).
+
+### Follow-up fix: heartbeat error handling in main()
+
+Additional change to `scripts/browser-worker.mjs`:
+- Removed `.catch(() => {})` swallowing on startup heartbeat; critical failures (auth/404/5xx) are now recorded in `criticalHeartbeatFailed` and reflected in the exit code.
+- Periodic heartbeat failures are recorded via `.catch()` (no unhandled rejections) and critical ones set the flag.
+- `heartbeat()` no longer calls `process.exit(1)` directly; instead throws so callers can perform graceful shutdown.
+- Added `isCriticalHeartbeatFailure()` helper and extended `shutdownExitCode()` with a third parameter.
+
+Additional tests: 7 new tests (critical heartbeat failure detection + exit code with critical flag). Total browser-worker tests: 24.

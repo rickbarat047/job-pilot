@@ -46,9 +46,22 @@ export function isAuthFailure(err) {
   return Boolean(err && (err.status === 401 || /-> 401\b/.test(String(err.message || ""))));
 }
 
-export function shutdownExitCode(processingFailed, offlineHeartbeatFailed) {
-  // An earlier processing failure must not be concealed by a shutdown heartbeat error.
+export function isCriticalHeartbeatFailure(err) {
+  if (!err) return false;
+  if (typeof err.status === "number") {
+    if (err.status === 401 || err.status === 404) return true;
+    if (err.status >= 500) return true;
+  }
+  // Fall back to message-based detection for errors without a status property.
+  const msg = String(err.message || err);
+  return /-> 401\b/.test(msg) || /-> 404\b/.test(msg) || /-> 5\d\d\b/.test(msg);
+}
+
+export function shutdownExitCode(processingFailed, offlineHeartbeatFailed, criticalHeartbeatFailed = false) {
+  // An earlier processing or critical heartbeat failure must not be concealed
+  // by a shutdown heartbeat error (and vice versa).
   if (processingFailed) return 1;
+  if (criticalHeartbeatFailed) return 1;
   if (offlineHeartbeatFailed) return 1;
   return 0;
 }

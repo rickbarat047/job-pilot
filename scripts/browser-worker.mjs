@@ -16,7 +16,7 @@
 //   BROWSER_TIMEOUT_MS     default 120000
 //   ONE_SHOT               if "1", process one task then exit
 
-import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, shutdownExitCode, shouldFailWorkflowOnHttpStatus } from "./browser-worker-lib.mjs";
+import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, shouldFailWorkflowOnHttpStatus } from "./browser-worker-lib.mjs";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 5000);
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 20000);
@@ -71,12 +71,11 @@ async function heartbeat(status = "online", meta = {}) {
   } catch (err) {
     console.error("heartbeat failed", err instanceof Error ? err.message : err);
     if (isAuthFailure(err)) {
-      // A 401 means the worker token is wrong; fail the workflow clearly.
       console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
-      process.exit(1);
     }
-    // Re-throw server errors so they are not silently treated as success.
-    if (err && typeof err.status === "number" && shouldFailWorkflowOnHttpStatus(err.status)) {
+    // Re-throw critical failures (auth/404/5xx) so callers can react; transient
+    // errors are recorded but do not abort the worker.
+    if (isCriticalHeartbeatFailure(err)) {
       throw err;
     }
   }
@@ -523,32 +522,49 @@ async function processOne() {
 async function main() {
   console.log(`JobPilot browser worker starting; polling ${APP_URL} every ${POLL_INTERVAL_MS}ms`);
   const meta = { worker: "playwright", version: "2-ats-adapters", ats: "auto" };
-  // Online heartbeat when the worker starts.
-  await heartbeat("online", meta).catch(() => {});
-  const hb = setInterval(() => { heartbeat("online", meta).catch(() => {}); }, HEARTBEAT_INTERVAL_MS);
 
+  let criticalHeartbeatFailed = false;
   let processingFailed = false;
   let offlineHeartbeatFailed = false;
 
+  // Startup heartbeat: fail clearly on auth/404/5xx (recorded, not swallowed).
+  try {
+    await heartbeat("online", meta);
+  } catch (err) {
+    criticalHeartbeatFailed = true;
+    console.error("startup heartbeat failed", err instanceof Error ? err.message : err);
+  }
+
+  // Periodic heartbeats: record failures, never unhandled rejections.
+  const hb = setInterval(() => {
+    heartbeat("online", meta).catch((err) => {
+      if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
+      console.error("periodic heartbeat failed", err instanceof Error ? err.message : err);
+    });
+  }, HEARTBEAT_INTERVAL_MS);
+
   try {
     if (ONE_SHOT) {
-      try {
-        await processOne();
-      } catch (err) {
-        processingFailed = true;
-        console.error("processing failed", err instanceof Error ? err.message : err);
+      if (!criticalHeartbeatFailed) {
+        try {
+          await processOne();
+        } catch (err) {
+          processingFailed = true;
+          console.error("processing failed", err instanceof Error ? err.message : err);
+        }
       }
       clearInterval(hb);
       try {
         await heartbeat("offline", meta);
       } catch (err) {
+        if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
         offlineHeartbeatFailed = true;
         console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
       }
-      process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed));
+      process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed, criticalHeartbeatFailed));
     }
 
-    while (!stopping) {
+    while (!stopping && !criticalHeartbeatFailed) {
       let hadWork = false;
       try {
         hadWork = await processOne();
@@ -566,14 +582,15 @@ async function main() {
     clearInterval(hb);
   }
 
-  // Graceful shutdown: offline heartbeat must not conceal an earlier processing failure.
+  // Graceful shutdown: offline heartbeat must not conceal earlier failures.
   try {
     await heartbeat("offline", meta);
   } catch (err) {
+    if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
     offlineHeartbeatFailed = true;
     console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
   }
-  process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed));
+  process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed, criticalHeartbeatFailed));
 }
 
 main().catch((err) => {

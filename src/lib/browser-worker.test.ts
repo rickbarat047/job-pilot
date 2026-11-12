@@ -6,6 +6,7 @@ import {
   createApiError,
   isEmptyQueueResult,
   isAuthFailure,
+  isCriticalHeartbeatFailure,
   shutdownExitCode,
   shouldFailWorkflowOnHttpStatus,
 } from "../../scripts/browser-worker-lib.mjs";
@@ -99,5 +100,39 @@ describe("browser worker - shutdown exit code", () => {
   });
   it("returns 1 when both failed", () => {
     expect(shutdownExitCode(true, true)).toBe(1);
+  });
+});
+
+describe("browser worker - critical heartbeat failure", () => {
+  it("flags 401/404/5xx as critical", () => {
+    expect(isCriticalHeartbeatFailure(createApiError(401, "POST", "/x", "unauth"))).toBe(true);
+    expect(isCriticalHeartbeatFailure(createApiError(404, "POST", "/x", "not found"))).toBe(true);
+    expect(isCriticalHeartbeatFailure(createApiError(500, "POST", "/x", "boom"))).toBe(true);
+    expect(isCriticalHeartbeatFailure(createApiError(503, "POST", "/x", "boom"))).toBe(true);
+  });
+  it("does not flag 2xx/400/transient errors as critical", () => {
+    expect(isCriticalHeartbeatFailure(createApiError(200, "POST", "/x", "ok"))).toBe(false);
+    expect(isCriticalHeartbeatFailure(createApiError(400, "POST", "/x", "bad"))).toBe(false);
+    expect(isCriticalHeartbeatFailure(new Error("network down"))).toBe(false);
+  });
+  it("detects critical status from message when no status property", () => {
+    expect(isCriticalHeartbeatFailure(new Error("POST /x -> 404: not found"))).toBe(true);
+    expect(isCriticalHeartbeatFailure(new Error("POST /x -> 500: boom"))).toBe(true);
+    expect(isCriticalHeartbeatFailure(new Error("POST /x -> 401: unauth"))).toBe(true);
+  });
+});
+
+describe("browser worker - critical heartbeat in exit code", () => {
+  it("returns 1 when startup heartbeat failed critically, even if processing succeeded", () => {
+    expect(shutdownExitCode(false, false, true)).toBe(1);
+  });
+  it("returns 1 when periodic critical failure recorded, even if shutdown heartbeat ok", () => {
+    expect(shutdownExitCode(false, false, true)).toBe(1);
+  });
+  it("shutdown failure does not conceal an earlier critical heartbeat failure", () => {
+    expect(shutdownExitCode(false, true, true)).toBe(1);
+  });
+  it("returns 0 only when no failure of any kind", () => {
+    expect(shutdownExitCode(false, false, false)).toBe(0);
   });
 });
