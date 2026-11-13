@@ -3,23 +3,23 @@ import { checkRateLimit, clearRateLimits, clientIp } from "./rate-limit";
 
 describe("rate limiting", () => {
   const originalNodeEnv = process.env.NODE_ENV;
-  const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalUrl = process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  const originalToken = process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
 
   beforeEach(() => {
     clearRateLimits();
-    delete process.env.UPSTASH_REDIS_REST_URL;
-    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    delete process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+    delete process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
     (process.env as any).NODE_ENV = "test";
   });
 
   afterEach(() => {
     if (originalNodeEnv === undefined) delete (process.env as any).NODE_ENV;
     else (process.env as any).NODE_ENV = originalNodeEnv;
-    if (originalUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
-    else process.env.UPSTASH_REDIS_REST_URL = originalUrl;
-    if (originalToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
-    else process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
+    if (originalUrl === undefined) delete process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+    else process.env.UPSTASH_REDIS_REST_KV_REST_API_URL = originalUrl;
+    if (originalToken === undefined) delete process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN = originalToken;
     clearRateLimits();
   });
 
