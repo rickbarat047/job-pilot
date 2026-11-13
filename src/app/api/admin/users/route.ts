@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth";
-import { getPermissionsForUser } from "@/lib/repositories";
+import { isAdminEmail } from "@/lib/admin";
 import { all, get } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -8,8 +8,9 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const user = await requireApiUser();
-    const perms = await getPermissionsForUser(user.id);
-    if (perms.submitApplications === "never") {
+    // Admin access is server-controlled and never derived from editable
+    // permission rows.
+    if (!isAdminEmail(user.email)) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 

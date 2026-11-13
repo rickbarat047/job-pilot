@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth";
 import { get, run, nowIso, newId } from "@/lib/db";
+import { isPrivateHost } from "@/lib/sources/http";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,21 @@ export async function POST(request: Request) {
     const keys = body.keys && typeof body.keys === "object" ? body.keys : {};
     const p256dh = typeof keys.p256dh === "string" ? keys.p256dh : "";
     const auth = typeof keys.auth === "string" ? keys.auth : "";
-    if (!endpoint || !p256dh || !auth) {
+    let endpointUrl: URL | null = null;
+    try {
+      endpointUrl = new URL(endpoint);
+    } catch {
+      endpointUrl = null;
+    }
+    if (
+      !endpointUrl ||
+      endpointUrl.protocol !== "https:" ||
+      isPrivateHost(endpointUrl.hostname) ||
+      !p256dh ||
+      !auth ||
+      p256dh.length > 256 ||
+      auth.length > 256
+    ) {
       return NextResponse.json({ error: "Invalid subscription." }, { status: 400 });
     }
     const existing = await get<{ id: string }>("SELECT id FROM push_subscriptions WHERE user_id = ? AND endpoint = ?", [user.id, endpoint]);

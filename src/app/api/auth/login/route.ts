@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticate, createSession, AuthError, audit } from "@/lib/auth";
+import { authenticate, createSession, AuthError, audit, assertSameOrigin } from "@/lib/auth";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { z } from "zod";
 import { nowIso, run } from "@/lib/db";
@@ -8,9 +8,14 @@ const loginSchema = z.object({ email: z.string().email(), password: z.string().m
 
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
     const ip = clientIp(request);
-    const rate = checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
-    if (!rate.ok) return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    const rate = await checkRateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+    if (!rate.ok) {
+      const status = rate.unavailable ? 503 : 429;
+      const message = rate.unavailable ? "Rate limiting is unavailable. Try again later." : "Too many attempts. Try again later.";
+      return NextResponse.json({ error: message }, { status });
+    }
     const body = await request.json();
     const input = loginSchema.parse(body);
     const user = await authenticate(input.email, input.password);

@@ -12,7 +12,12 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization");
   const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
   const secret = request.headers.get("x-cron-secret") || bearer || new URL(request.url).searchParams.get("secret") || "";
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Cron secret is not configured." }, { status: 503 });
+    }
+  } else if (secret !== expected) {
     return NextResponse.json({ error: "Invalid cron secret." }, { status: 401 });
   }
 

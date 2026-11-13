@@ -26,9 +26,13 @@ This guide walks through deploying JobPilot AI to production on **Vercel + Supab
 ### 1.2 Run Migrations
 
 1. In Supabase Dashboard → SQL Editor
-2. Run `supabase/migrations/0001_schema.sql` (copy-paste the entire file)
-3. Run `supabase/migrations/0002_rls.sql` (copy-paste the entire file)
-4. Verify tables created: Go to Table Editor, you should see ~35 tables
+2. For a **fresh database**, run these in order:
+   - `supabase/migrations/0001_schema.sql`
+   - `supabase/migrations/0002_rls.sql`
+   - `supabase/migrations/0003_push_subscriptions.sql`
+   - `supabase/migrations/0004_push_subscriptions_rls.sql`
+3. For a **pre-existing database**, first reconcile Supabase migration history against the actual schema. Do not blindly replay the baseline migrations (`0001_schema.sql`, `0002_rls.sql`), because some statements (especially RLS policy creation) are not idempotent and may fail or duplicate objects. Apply only the migrations whose objects are missing, or repair migration history first.
+4. Verify tables created: Go to Table Editor, you should see the application tables including `push_subscriptions`
 
 ### 1.3 Create Storage Bucket
 
@@ -41,7 +45,8 @@ This guide walks through deploying JobPilot AI to production on **Vercel + Supab
 
 From Supabase Dashboard → Settings → Database:
 
-- **Connection string (pooler, port 6543)**: `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`
+- **Connection string (session pooler, port 5432)**: `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres`
+- Do **not** use the transaction pooler on port 6543 for this app; use the Supabase **Session Pooler** on port 5432.
 - **Project URL**: `https://[ref].supabase.co`
 - **Service Role Key**: Settings → API → `service_role` key (keep secret!)
 - **Anon Key**: Settings → API → `anon` key
@@ -65,7 +70,9 @@ Add these in Vercel → Project → Settings → Environment Variables → **Pro
 |----------|-------|-------|
 | `NODE_ENV` | `production` | |
 | `APP_URL` | `https://your-app.vercel.app` | Update after first deploy |
-| `DATABASE_URL` | Supabase pooler URL (port 6543) | **Required** |
+| `DATABASE_URL` | Supabase session pooler URL (port 5432) | **Required** |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL | **Required in production** for distributed rate limiting |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token | **Required in production**, server-only secret |
 | `DATABASE_SSL` | `true` | |
 | `SUPABASE_URL` | `https://[ref].supabase.co` | |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key from Supabase | **Secret** |
@@ -230,7 +237,7 @@ Run through this checklist:
 
 | Issue | Solution |
 |-------|----------|
-| `database: "error"` in health | Check `DATABASE_URL` format, SSL, pooler port 6543 |
+| `database: "error"` in health | Check `DATABASE_URL` format, SSL, session pooler port 5432 |
 | Worker shows "offline" | Verify `WORKER_TOKEN` matches on both sides, check worker logs |
 | Jobs not discovered | Check source adapters, verify `vercel.json` cron or external scheduler |
 | PDF generation fails | Check `@napi-rs/canvas` native deps, verify storage bucket permissions |

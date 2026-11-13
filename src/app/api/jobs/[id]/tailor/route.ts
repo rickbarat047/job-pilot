@@ -13,8 +13,12 @@ import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const ip = clientIp(_request);
-    const rate = checkRateLimit(`tailor:${ip}`, 10, 15 * 60 * 1000);
-    if (!rate.ok) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+    const rate = await checkRateLimit(`tailor:${ip}`, 10, 15 * 60 * 1000);
+    if (!rate.ok) {
+      const status = rate.unavailable ? 503 : 429;
+      const message = rate.unavailable ? "Rate limiting is unavailable. Try again later." : "Too many requests. Try again later.";
+      return NextResponse.json({ error: message }, { status });
+    }
     const user = await requireApiUser();
     const { id: jobId } = await context.params;
     const permissions = await getPermissionsForUser(user.id);

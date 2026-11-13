@@ -10,8 +10,12 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const ip = clientIp(request);
-    const rate = checkRateLimit(`discovery:${ip}`, 5, 15 * 60 * 1000);
-    if (!rate.ok) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+    const rate = await checkRateLimit(`discovery:${ip}`, 5, 15 * 60 * 1000);
+    if (!rate.ok) {
+      const status = rate.unavailable ? 503 : 429;
+      const message = rate.unavailable ? "Rate limiting is unavailable. Try again later." : "Too many requests. Try again later.";
+      return NextResponse.json({ error: message }, { status });
+    }
     const user = await requireApiUser();
     await ensureBootstrap();
     const body = await request.json().catch(() => ({}));

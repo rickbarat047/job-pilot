@@ -13,8 +13,12 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const ip = clientIp(request);
-    const rate = checkRateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
-    if (!rate.ok) return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    const rate = await checkRateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
+    if (!rate.ok) {
+      const status = rate.unavailable ? 503 : 429;
+      const message = rate.unavailable ? "Rate limiting is unavailable. Try again later." : "Too many attempts. Try again later.";
+      return NextResponse.json({ error: message }, { status });
+    }
     const body = await request.json();
     const input = registerSchema.parse(body);
     const user = await createUser(input);

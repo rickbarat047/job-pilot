@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { all, get, newId, nowIso, parseJson, run, toJson, transaction } from "./db";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, verifyPassword, validatePasswordStrength } from "./password";
 import { DEFAULT_PERMISSIONS } from "./permissions";
 import type { AutonomyLevel } from "./permissions";
 
@@ -39,6 +39,8 @@ export async function createUser(input: { email: string; password: string; name:
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError("Enter a valid email address.", 400);
   if (name.length < 2) throw new AuthError("Enter your full name.", 400);
   if (input.password.length < 8) throw new AuthError("Password must be at least 8 characters.", 400);
+  const strengthError = validatePasswordStrength(input.password);
+  if (strengthError) throw new AuthError(strengthError, 400);
   const existing = await get<{ id: string }>("SELECT id FROM users WHERE email = ?", [email]);
   if (existing) throw new AuthError("An account with this email already exists.", 409);
 
@@ -134,16 +136,27 @@ export async function requireApiUser(): Promise<SessionUser> {
 /** Same-origin check for cookie-authenticated mutations. */
 export function assertSameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
-  if (!origin) return;
-  const host = request.headers.get("host");
+  if (!origin) throw new AuthError("Missing request origin.", 403);
   let originHost = "";
   try {
     originHost = new URL(origin).host;
   } catch {
     throw new AuthError("Invalid request origin.", 403);
   }
-  const allowedHost = process.env.APP_URL ? new URL(process.env.APP_URL).host : host;
-  if (host && originHost !== host && originHost !== allowedHost) {
+
+  const host = request.headers.get("host");
+  if (!host) throw new AuthError("Missing request host.", 403);
+
+  let allowedHost: string | null = null;
+  if (process.env.APP_URL) {
+    try {
+      allowedHost = new URL(process.env.APP_URL).host;
+    } catch {
+      throw new AuthError("Invalid APP_URL configuration.", 500);
+    }
+  }
+
+  if (originHost !== host && originHost !== allowedHost) {
     throw new AuthError("Cross-site request blocked.", 403);
   }
 }

@@ -1,5 +1,6 @@
 import webpush from "web-push";
-import { all, get } from "./db";
+import { all, get, run } from "./db";
+import { isPrivateHost } from "./sources/http";
 
 const publicKey = process.env.VAPID_PUBLIC_KEY;
 const privateKey = process.env.VAPID_PRIVATE_KEY;
@@ -24,6 +25,17 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   );
   let sent = 0;
   for (const sub of subs) {
+    let endpointUrl: URL;
+    try {
+      endpointUrl = new URL(sub.endpoint);
+    } catch {
+      await run("DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?", [userId, sub.endpoint]);
+      continue;
+    }
+    if (endpointUrl.protocol !== "https:" || isPrivateHost(endpointUrl.hostname)) {
+      await run("DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?", [userId, sub.endpoint]);
+      continue;
+    }
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
