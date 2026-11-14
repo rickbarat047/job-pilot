@@ -146,19 +146,19 @@ function buildResumeSummary(profile: CandidateProfile, job: NormalizedJob): stri
 }
 
 function reorderProjects(profile: CandidateProfile, job: NormalizedJob): typeof profile.projects {
-  const jobSkills = new Set(job.skillsRequired);
+  const jobSkills = new Set((job.skillsRequired ?? []).map((skill) => skill.toLowerCase()));
   return [...(profile.projects ?? [])].sort((a, b) => {
-    const aScore = (a.technologies ?? []).filter((t) => jobSkills.has(t)).length + (jobSkills.has("Data Analysis") ? 0 : 0);
-    const bScore = (b.technologies ?? []).filter((t) => jobSkills.has(t)).length;
+    const aScore = (a.technologies ?? []).filter((technology) => jobSkills.has(technology.toLowerCase())).length;
+    const bScore = (b.technologies ?? []).filter((technology) => jobSkills.has(technology.toLowerCase())).length;
     return bScore - aScore;
   });
 }
 
 function reorderSkills(profile: CandidateProfile, job: NormalizedJob): string[] {
   const candidate = profile.skills.map((s) => s.name);
-  const jobSkills = new Set(job.skillsRequired);
-  const matched = candidate.filter((skill) => jobSkills.has(skill));
-  const rest = candidate.filter((skill) => !jobSkills.has(skill));
+  const jobSkills = new Set((job.skillsRequired ?? []).map((skill) => skill.toLowerCase()));
+  const matched = candidate.filter((skill) => jobSkills.has(skill.toLowerCase()));
+  const rest = candidate.filter((skill) => !jobSkills.has(skill.toLowerCase()));
   return [...matched, ...rest].slice(0, 18);
 }
 
@@ -205,10 +205,10 @@ export async function tailorApplication(profile: CandidateProfile, prefs: Candid
   const atsKeywords = [...new Set([...job.skillsRequired, ...job.title.split(/\W+/).filter((t) => t.length > 2)])].slice(0, 25);
   const customizationNotes = [
     `Reordered skills to surface ${match.strengths.slice(0, 4).join(", ") || "your strongest overlaps"} first.`,
-    `Summary rewritten to target ${job.title} at ${job.companyName} using only verified profile facts.`,
-    `Projects reordered to favour ${job.skillsRequired.slice(0, 3).join(", ") || "the role's technical requirements"}.`,
-    match.gaps.length ? `Gaps retained honestly in the application notes: ${match.gaps.slice(0, 4).join(", ")}.` : "No major skill gaps were detected against the job description.",
-    "No experience, education, certification or project was added or altered beyond the uploaded CV.",
+    `Summary tailored to ${job.title} at ${job.companyName} using details in your profile.`,
+    "Projects reordered to surface listed technologies that overlap with the role; otherwise, the original order was kept.",
+    match.gaps.length ? `The role lists these skills that are not present in your profile: ${match.gaps.slice(0, 4).join(", ")}.` : "The current role data did not identify specific skill gaps.",
+    "No new experience, education, certification or project entries were added; entries come from your profile.",
   ];
 
   if (isAIEnabled()) {
@@ -228,26 +228,21 @@ ${sanitizeExternalText(job.description, 9000)}
 
 Return JSON with keys:
 - summary: 3-4 sentence professional summary tailored to the role, using only candidate facts.
-- coverLetter: 280-360 word cover letter, professional, truthful, no invented achievements.
-- recruiterEmail: 120-180 word email to a recruiter/hiring manager.
-- questions: array of {question, answer} for these questions: "Why are you interested in this role?", "What relevant experience do you bring?", "What are your strongest skills for this role?"`,
+- coverLetter: 280-360 word cover letter, professional, truthful, no invented achievements. Do not claim a resume is attached or an application has been submitted.
+- recruiterEmail: 120-180 word email to a recruiter/hiring manager. Do not claim an attachment or submitted application.
+- Never add an employer, project, skill, achievement, date, metric, certification, or degree that is not in the candidate facts above.`,
           },
         ],
         z.object({
           summary: z.string().min(40).max(900),
           coverLetter: z.string().min(120).max(2500),
           recruiterEmail: z.string().min(60).max(1200),
-          questions: z.array(z.object({ question: z.string(), answer: z.string() })).max(6),
         }),
       );
       resume.summary = ai.summary;
       coverLetter.text = ai.coverLetter;
       recruiterEmail.body = ai.recruiterEmail;
-      for (const item of ai.questions) {
-        const existing = questions.find((q) => q.question === item.question);
-        if (existing && item.answer.trim()) existing.answer = item.answer.trim();
-      }
-      return { resume, coverLetter, recruiterEmail, questions, atsKeywords, customizationNotes: [...customizationNotes, "Summary, cover letter and recruiter email were refined by the configured AI provider using only the facts above."], provider: "ai" };
+      return { resume, coverLetter, recruiterEmail, questions, atsKeywords, customizationNotes: [...customizationNotes, "AI-assisted wording is a draft based on your profile. Review it before use."], provider: "ai" };
     } catch {
       // Fall back to deterministic output; never fail tailoring because AI is unavailable.
     }
@@ -256,9 +251,16 @@ Return JSON with keys:
   return { resume, coverLetter, recruiterEmail, questions, atsKeywords, customizationNotes, provider: "deterministic" };
 }
 
-function buildCoverLetter(profile: CandidateProfile, job: NormalizedJob, match: JobMatchResult): string {
-  const strengths = match.strengths.slice(0, 5).join(", ");
+export function buildCoverLetter(profile: CandidateProfile, job: NormalizedJob, match: JobMatchResult): string {
+  const profileSkills = new Set(profile.skills.map((skill) => skill.name.trim().toLowerCase()).filter(Boolean));
+  const strengths = match.strengths.filter((skill) => profileSkills.has(skill.trim().toLowerCase())).slice(0, 5).join(", ");
   const gaps = match.gaps.slice(0, 4).join(", ");
+  const workEntries = [...profile.experience, ...profile.internships].slice(0, 2);
+  const projectEntries = reorderProjects(profile, job).slice(0, 2);
+  const projectOrWork = [
+    ...workEntries.map((entry) => `My profile lists ${entry.role}${entry.company ? ` at ${entry.company}` : ""}${entry.description ? `: ${entry.description.trim().slice(0, 360)}` : "."}`),
+    ...projectEntries.map((project) => `A project in my profile is ${project.name}${project.description ? `: ${project.description.trim().slice(0, 360)}` : "."}`),
+  ];
   return [
     `${profile.fullName || "Candidate"}`,
     profile.email ? `${profile.email}` : "",
@@ -267,9 +269,9 @@ function buildCoverLetter(profile: CandidateProfile, job: NormalizedJob, match: 
     "",
     `I am writing to apply for the ${job.title} position.${profile.degree ? ` I hold a ${profile.degree}${profile.university ? ` from ${profile.university}` : ""}.` : ""} I am keen to contribute to ${job.companyName}.`,
     strengths ? `My profile aligns with this role through ${strengths}.` : "I would welcome the opportunity to discuss how my background can support your team.",
-    profile.projects.length + profile.experience.length + profile.internships.length > 0 ? `My profile includes ${profile.projects.length + profile.experience.length + profile.internships.length} project, work or internship entries.` : "",
+    ...projectOrWork,
     gaps ? `The role mentions ${gaps}; I would welcome the opportunity to discuss these requirements and my fit for the position.` : "",
-    `I have attached my resume for your review. Thank you for considering my application.`,
+    "My resume provides further details about my background. Thank you for considering my application.",
     "",
     "Sincerely,",
     profile.fullName || "Candidate",
@@ -283,7 +285,7 @@ I hope you are doing well. I am writing to express my interest in the ${job.titl
 
 I am ${profile.degree ? `a ${profile.degree} graduate` : "a candidate"}${profile.university ? ` from ${profile.university}` : ""}${profile.skills.length ? ` with skills in ${profile.skills.slice(0, 6).map((s) => s.name).join(", ")}` : ""}. I see relevant overlap with the role${match.strengths.length ? ` in ${match.strengths.slice(0, 3).join(", ")}` : ""}.
 
-I have attached my resume and would be grateful for the opportunity to discuss how I can contribute to your team. Please let me know if you need any additional information.
+I would be grateful for the opportunity to discuss how I can contribute to your team. Please let me know if you need any additional information.
 
 Thank you for your time and consideration.
 
@@ -306,13 +308,19 @@ export function buildApplicationQuestions(profile: CandidateProfile, prefs: Cand
       (() => {
         const experienceCount = profile.experience.length + profile.internships.length;
         const skills = profile.skills.slice(0, 8).map((skill) => skill.name).filter(Boolean).join(", ");
-        const experienceLabel = experienceCount === 1 ? "1 experience entry" : `${experienceCount} experience entries`;
-        const projectLabel = profile.projects.length === 1 ? "1 project" : `${profile.projects.length} projects`;
-        const projectVerb = profile.projects.length === 1 ? "is" : "are";
-        const summary = experienceCount === 0
-          ? `${projectLabel} ${projectVerb} listed in my profile; no work or internship entries are listed.`
-          : `${experienceLabel} and ${projectLabel} are listed in my profile.`;
-        return `${summary}${skills ? ` Key areas include ${skills}.` : ""}`;
+        const work = [...profile.experience, ...profile.internships].slice(0, 3).map((entry) =>
+          `${entry.role}${entry.company ? ` at ${entry.company}` : ""}${entry.description ? `: ${entry.description.trim().slice(0, 280)}` : ""}`,
+        );
+        const projects = profile.projects.slice(0, 3).map((project) =>
+          `${project.name}${project.description ? `: ${project.description.trim().slice(0, 280)}` : ""}`,
+        );
+        const workSummary = experienceCount === 0
+          ? "No work or internship entries are listed in my profile."
+          : `${experienceCount} work or internship ${experienceCount === 1 ? "entry is" : "entries are"} listed in my profile.`;
+        const projectSummary = profile.projects.length === 0
+          ? "No project entries are listed in my profile."
+          : `My profile includes ${profile.projects.length} project${profile.projects.length === 1 ? "" : "s"}${projects.length ? `: ${projects.join("; ")}` : ""}.`;
+        return `${workSummary}${work.length ? ` Listed work: ${work.join("; ")}.` : ""} ${projectSummary}${skills ? ` Skills listed in my profile include ${skills}.` : ""}`;
       })(),
       false,
     ),

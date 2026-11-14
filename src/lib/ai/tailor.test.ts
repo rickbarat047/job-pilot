@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildApplicationQuestions } from "./tailor";
+import { buildApplicationQuestions, buildCoverLetter } from "./tailor";
 import type { CandidatePreferences, CandidateProfile, JobMatchResult, NormalizedJob } from "../types";
 
 const profile: CandidateProfile = {
@@ -77,7 +77,21 @@ const job = {
 
 const match = {
   overallScore: 88,
+  skillScore: 90,
+  educationScore: 80,
+  experienceScore: 80,
+  careerScore: 85,
+  locationScore: 90,
+  salaryScore: 80,
+  flexibilityScore: 80,
+  freshnessScore: 90,
   strengths: ["CAD", "Automotive Engineering"],
+  gaps: [],
+  missingRequirements: [],
+  explanation: "Good profile overlap.",
+  recommendedAction: "Proceed to review.",
+  qualified: true,
+  disqualifiers: [],
   roleFamily: "Automotive & EV Engineering",
 } as JobMatchResult;
 
@@ -92,8 +106,10 @@ describe("application question drafts", () => {
   it("describes work and project entries accurately using only profile facts", () => {
     const questions = buildApplicationQuestions(profile, preferences, job, match);
     const answer = questions.find((question) => question.question === "What relevant experience do you bring?")?.answer ?? "";
-    expect(answer).toContain("no work or internship entries are listed");
+    expect(answer).toContain("No work or internship entries are listed in my profile.");
     expect(answer).toContain("2 projects");
+    expect(answer).toContain("Hybrid Go-Kart Powertrain");
+    expect(answer).toContain("EV Battery Pack Thermal Study");
     expect(answer).toContain("Automotive Engineering");
     expect(answer).toContain("CAD");
     expect(answer).toContain("SolidWorks");
@@ -108,7 +124,9 @@ describe("application question drafts", () => {
     };
     const questions = buildApplicationQuestions(withExperience, preferences, job, match);
     const answer = questions.find((question) => question.question === "What relevant experience do you bring?")?.answer ?? "";
-    expect(answer).toContain("1 experience entry and 1 project are listed");
+    expect(answer).toContain("1 work or internship entry is listed in my profile.");
+    expect(answer).toContain("Engineering Intern at ABC Auto");
+    expect(answer).toContain("My profile includes 1 project: Suspension Study");
   });
 
   it("keeps demographic and consent questions for explicit approval", () => {
@@ -139,5 +157,33 @@ describe("application question drafts", () => {
       expect(question?.answer).toBe("");
       expect(question?.requiresApproval).toBe(true);
     }
+  });
+});
+
+describe("cover-letter drafts", () => {
+  it("uses candidate-provided work and project details and does not claim an attachment", () => {
+    const candidate: CandidateProfile = {
+      ...profile,
+      experience: [{ role: "Engineering Intern", company: "ABC Auto", description: "Supported quality checks on vehicle components." }],
+      projects: [
+        { name: "Battery Thermal Study", description: "Studied battery pack temperatures.", technologies: ["THERMAL MODELING"] },
+        { name: "Go-Kart Frame", description: "Designed a frame in CAD.", technologies: ["CAD"] },
+      ],
+    };
+    const targetJob = { ...job, skillsRequired: ["cad"] } as NormalizedJob;
+    const targetMatch = { ...match, strengths: ["CAD", "Unlisted Pro Tool"] } as JobMatchResult;
+    const letter = buildCoverLetter(candidate, targetJob, targetMatch);
+
+    expect(letter).toContain("Engineering Intern at ABC Auto: Supported quality checks on vehicle components.");
+    expect(letter.indexOf("Go-Kart Frame")).toBeLessThan(letter.indexOf("Battery Thermal Study"));
+    expect(letter).toContain("through CAD");
+    expect(letter).not.toContain("Unlisted Pro Tool");
+    expect(letter).not.toMatch(/attached my resume/i);
+  });
+
+  it("does not imply work experience or projects when none are listed", () => {
+    const candidate = { ...profile, experience: [], internships: [], projects: [] };
+    const letter = buildCoverLetter(candidate, { ...job, skillsRequired: [] } as NormalizedJob, match);
+    expect(letter).not.toMatch(/my profile lists|a project in my profile/i);
   });
 });

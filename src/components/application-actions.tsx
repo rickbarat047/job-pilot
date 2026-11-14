@@ -66,7 +66,7 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
       {(state === "Draft Ready" || state === "Awaiting Approval") && (
         <Button className="w-full" onClick={() => run("approve")} disabled={!!loading || approvalDisabled}>Approve application</Button>
       )}
-      {(state === "Draft Ready" || state === "Awaiting Approval") && approvalDisabled ? <p className="text-xs text-muted-foreground">Save your answer edits before approving this application.</p> : null}
+      {(state === "Draft Ready" || state === "Awaiting Approval") && approvalDisabled ? <p className="text-xs text-muted-foreground">Review the materials and answers, save any edits, and confirm above before approving.</p> : null}
 
       {state === "Approved" && (
         <>
