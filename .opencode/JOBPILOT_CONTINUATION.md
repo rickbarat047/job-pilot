@@ -10,7 +10,7 @@ Improve and verify the real candidate journey: relevant and current jobs, truthf
 
 - Repository: `job-pilot`
 - Branch: `fix/candidate-application-safety`
-- HEAD: `e65c73f` (`Make production job search case-insensitive`)
+- Candidate search fix: `e65c73f` (`Make production job search case-insensitive`). The continuation behavior and checkpoint follow-up are committed at `f25070c`.
 - The branch's last remotely confirmed SHA is `06a3666f16c761a78125b4aa5c60c4c31adb58d6`. Commits `1a3e0ce`, `65a1cc8`, and `e65c73f` are local and have not been pushed.
 - The latest push attempt could resolve GitHub but failed because Git Credential Manager/MSYS could not start (`NtCreateDirectoryObject ... 0xC0000022`); Git then had no username available. Do not rewrite history. Retry only through a working authenticated Git path.
 - OpenCode project guidance and `/jobpilot-plan` and `/jobpilot-verify` commands are committed at `65a1cc8`.
