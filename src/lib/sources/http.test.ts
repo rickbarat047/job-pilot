@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fetchJson, fetchPage, isPrivateHost } from "./http";
+import { fetchHead, fetchJson, fetchPage, isPrivateHost } from "./http";
 
 describe("isPrivateHost", () => {
   it("blocks localhost and loopback", () => {
@@ -76,6 +76,25 @@ describe("fetchPage redirect handling", () => {
     );
     await expect(fetchPage("https://example.com/start", { fetchImpl })).rejects.toThrow(/Too many redirects/);
     expect(fetchImpl).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("fetchHead redirect handling", () => {
+  it("uses HEAD and returns the final safe URL", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 302, headers: { location: "https://example.com/final" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const result = await fetchHead("https://example.com/start", { fetchImpl });
+    expect(result).toEqual({ status: 200, finalUrl: "https://example.com/final" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls.every((call) => call[1]?.method === "HEAD")).toBe(true);
+  });
+
+  it("blocks a redirect to a private address before requesting it", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(new Response("", { status: 302, headers: { location: "http://127.0.0.1/internal" } }));
+    await expect(fetchHead("https://example.com/start", { fetchImpl })).rejects.toThrow();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -3,6 +3,7 @@ import { runDiscovery } from "./discovery";
 import { createNotification, getPermissionsForUser } from "./repositories";
 import { evaluatePermission } from "./permissions";
 import { isDefinitivelyClosedPostingStatus } from "./job-verification";
+import { fetchHead } from "./sources/http";
 import { checkCompanyCareerPage } from "./companies/check";
 
 type Row = Record<string, unknown>;
@@ -73,8 +74,8 @@ async function runTask(userId: string, type: string, payload: Record<string, unk
       const jobs = await all<{ id: string; application_url: string }>("SELECT id, application_url FROM jobs WHERE status='active' ORDER BY last_verified_at ASC LIMIT 50");
       for (const job of jobs) {
         try {
-          const response = await fetch(job.application_url, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
-          if (response.ok || isDefinitivelyClosedPostingStatus(response.status)) {
+          const response = await fetchHead(job.application_url);
+          if ((response.status >= 200 && response.status < 300) || isDefinitivelyClosedPostingStatus(response.status)) {
             await run("UPDATE jobs SET last_verified_at=?, status=? WHERE id=?", [nowIso(), isDefinitivelyClosedPostingStatus(response.status) ? "expired" : "active", job.id]);
           }
         } catch {

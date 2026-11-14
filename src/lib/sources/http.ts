@@ -223,6 +223,23 @@ export async function fetchPage(
   return { text, contentType: response.headers.get("content-type") ?? "", status: response.status, finalUrl };
 }
 
+export async function fetchHead(
+  url: string,
+  options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
+): Promise<{ status: number; finalUrl: string }> {
+  const { response, finalUrl } = await fetchWithValidatedRedirects(
+    url,
+    {
+      method: "HEAD",
+      signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
+      headers: { "user-agent": USER_AGENT },
+      cache: "no-store",
+    },
+    options.fetchImpl,
+  );
+  return { status: response.status, finalUrl };
+}
+
 export function isPrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!host) return true;
