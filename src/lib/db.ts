@@ -4,7 +4,7 @@ import { SCHEMA_SQL } from "./schema";
 
 export type DbProvider = "sqlite" | "postgres";
 
-let provider: DbProvider = process.env.DATABASE_URL || process.env.POSTGRES_URL ? "postgres" : "sqlite";
+const provider: DbProvider = process.env.DATABASE_URL || process.env.POSTGRES_URL ? "postgres" : "sqlite";
 let sqliteDb: any = null;
 let pgPool: any = null;
 
