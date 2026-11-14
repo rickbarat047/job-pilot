@@ -5,6 +5,7 @@ import {
   getPermissionsForUser,
   getProfile,
 } from "./repositories";
+import { supportedAtsForUrl } from "./ats-safety";
 
 type Row = Record<string, unknown>;
 
@@ -83,6 +84,7 @@ export async function getWorkerTaskPayload(taskId: string, baseUrl: string) {
 
   const detail = await getApplicationDetail(userId, applicationId);
   if (!detail) throw new Error("Application not found for this browser task.");
+  if (!supportedAtsForUrl(detail.job.applicationUrl)) throw new Error("This application URL is not on a supported secure hiring system.");
   if (!["Approved", "Applying"].includes(detail.application.state)) {
     throw new Error(`Application is ${detail.application.state}; only approved applications can be automated.`);
   }

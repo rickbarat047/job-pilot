@@ -118,13 +118,19 @@ function fieldMatchers() {
 
 // ---------- ATS detection ----------
 function detectAts(url) {
-  const u = (url || "").toLowerCase();
-  if (u.includes("greenhouse.io") || u.includes("boards.greenhouse")) return "greenhouse";
-  if (u.includes("lever.co") || u.includes("jobs.lever")) return "lever";
-  if (u.includes("ashbyhq.com") || u.includes("jobs.ashby")) return "ashby";
-  if (u.includes("smartrecruiters.com")) return "smartrecruiters";
-  if (u.includes("myworkdayjobs.com") || u.includes("workday.com")) return "workday";
-  return "generic";
+  let hostname;
+  try {
+    const parsed = new URL(url || "");
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password) return "unsupported";
+    hostname = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  } catch { return "unsupported"; }
+  const matches = (domain) => hostname === domain || hostname.endsWith(`.${domain}`);
+  if (matches("greenhouse.io")) return "greenhouse";
+  if (matches("lever.co")) return "lever";
+  if (matches("ashbyhq.com")) return "ashby";
+  if (matches("smartrecruiters.com")) return "smartrecruiters";
+  if (matches("myworkdayjobs.com") || matches("workday.com")) return "workday";
+  return "unsupported";
 }
 
 async function tmpDir() {
@@ -375,6 +381,9 @@ const ADAPTERS = {
 async function executeTask(taskPayload) {
   const { task, application, job, candidate, documents, answers, submit } = taskPayload;
   const ats = detectAts(job.applicationUrl);
+  if (ats === "unsupported") {
+    return { status: "manual_required", message: "This link is not on a supported secure hiring system. Complete the application manually on the employer's site.", finalUrl: job.applicationUrl || "", fieldsFilled: [], screenshotPath: null };
+  }
   console.log("ATS detected:", ats, "for", job.applicationUrl);
 
   const browser = await chromium.launch({ headless: HEADLESS });

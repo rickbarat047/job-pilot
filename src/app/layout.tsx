@@ -16,7 +16,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://jobpilot-ai-sand.vercel.app"),
   title: {
-    default: "JobPilot AI — Autonomous job hunting for India",
+    default: "JobPilot AI — Job search assistant for India",
     template: "%s — JobPilot AI",
   },
   description: "Discover, match, tailor and track job applications across India with an AI career agent.",

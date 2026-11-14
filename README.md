@@ -1,6 +1,6 @@
 # JobPilot AI
 
-JobPilot AI is an autonomous, permission-controlled job discovery and application platform for candidates in India. It parses a CV once, discovers real vacancies from public ATS boards and remote job boards, scores them against the candidate's actual profile, and generates truthful, ATS-friendly application materials.
+JobPilot AI is a permission-controlled job-search assistant for candidates in India. It parses a CV, checks a selected set of public employer and remote job boards, scores listings against the candidate's profile, and prepares application materials for review. It does not cover every job site or guarantee hiring outcomes.
 
 ## Quick start
 
