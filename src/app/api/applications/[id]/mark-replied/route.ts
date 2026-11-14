@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireApiUser } from "@/lib/auth";
+import { assertSameOrigin, requireApiUser } from "@/lib/auth";
 import { getApplicationDetail } from "@/lib/repositories";
 import { affectedRows, newId, nowIso, transaction } from "@/lib/db";
 import { createNotification } from "@/lib/repositories";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    assertSameOrigin(request);
     const user = await requireApiUser();
     const { id } = await context.params;
     const detail = await getApplicationDetail(user.id, id);

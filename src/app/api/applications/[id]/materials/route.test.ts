@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
+  assertSameOrigin: vi.fn(),
   getApplicationDetail: vi.fn(),
   transaction: vi.fn(),
   generateResumeDocuments: vi.fn(),
@@ -9,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   deleteFile: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({ requireApiUser: mocks.requireApiUser }));
+vi.mock("@/lib/auth", () => ({ requireApiUser: mocks.requireApiUser, assertSameOrigin: mocks.assertSameOrigin }));
 vi.mock("@/lib/repositories", () => ({ getApplicationDetail: mocks.getApplicationDetail }));
 vi.mock("@/lib/db", () => ({ nowIso: () => "2026-11-14T00:00:00.000Z", newId: (prefix: string) => `${prefix}_test`, transaction: mocks.transaction }));
 vi.mock("@/lib/documents/generate", () => ({ generateResumeDocuments: mocks.generateResumeDocuments, generateCoverLetterDocuments: mocks.generateCoverLetterDocuments }));

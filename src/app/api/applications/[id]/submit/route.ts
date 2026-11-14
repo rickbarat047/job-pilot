@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser } from "@/lib/auth";
+import { assertSameOrigin, requireApiUser } from "@/lib/auth";
 import { getApplicationDetail, getPermissionsForUser } from "@/lib/repositories";
 import { assertPermission } from "@/lib/permissions";
 import { affectedRows, newId, nowIso, run, transaction } from "@/lib/db";
@@ -11,6 +11,7 @@ import { isActiveForAutomatedApplication } from "@/lib/job-verification";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    assertSameOrigin(request);
     const ip = clientIp(request);
     const rate = await checkRateLimit(`submit:${ip}`, 10, 15 * 60 * 1000);
     if (!rate.ok) {

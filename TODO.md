@@ -17,7 +17,8 @@
 - Monthly INR salary amounts are normalized to annual LPA before salary-fit scoring; explicit LPA values remain unchanged.
 - Application approval now enforces same-origin requests and records the state transition plus audit event atomically, with a concurrent-state check.
 - Health readiness now returns HTTP 503 when the database, AI provider, or browser worker is unavailable, with component details in the response body.
-- Local verification: 39 test files / 204 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
+- All cookie-authenticated application mutations now enforce same-origin requests; withdraw/reject/retry also save status and timeline events atomically with state-change checks.
+- Local verification: 40 test files / 208 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve
 

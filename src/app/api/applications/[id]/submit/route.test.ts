@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
+  assertSameOrigin: vi.fn(),
   getApplicationDetail: vi.fn(),
   getPermissionsForUser: vi.fn(),
   assertPermission: vi.fn(),
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   isActiveForAutomatedApplication: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({ requireApiUser: mocks.requireApiUser }));
+vi.mock("@/lib/auth", () => ({ requireApiUser: mocks.requireApiUser, assertSameOrigin: mocks.assertSameOrigin }));
 vi.mock("@/lib/repositories", () => ({ getApplicationDetail: mocks.getApplicationDetail, getPermissionsForUser: mocks.getPermissionsForUser }));
 vi.mock("@/lib/permissions", () => ({ assertPermission: mocks.assertPermission }));
 vi.mock("@/lib/db", () => ({ affectedRows: mocks.affectedRows, newId: mocks.newId, nowIso: mocks.nowIso, run: mocks.run, transaction: mocks.transaction }));

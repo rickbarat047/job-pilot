@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
+  assertSameOrigin: vi.fn(),
   getApplicationDetail: vi.fn(),
   canTransition: vi.fn(() => true),
   affectedRows: vi.fn(() => 1),
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   dbRun: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({ requireApiUser: mocks.requireApiUser }));
+vi.mock("@/lib/auth", () => ({ requireApiUser: mocks.requireApiUser, assertSameOrigin: mocks.assertSameOrigin }));
 vi.mock("@/lib/repositories", () => ({ getApplicationDetail: mocks.getApplicationDetail }));
 vi.mock("@/lib/permissions", () => ({ canTransition: mocks.canTransition }));
 vi.mock("@/lib/db", () => ({

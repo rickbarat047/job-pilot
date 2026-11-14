@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser } from "@/lib/auth";
+import { assertSameOrigin, requireApiUser } from "@/lib/auth";
 import { getApplicationDetail } from "@/lib/repositories";
 import { nowIso, newId, transaction } from "@/lib/db";
 import { generateCoverLetterDocuments, generateResumeDocuments } from "@/lib/documents/generate";
@@ -8,6 +8,7 @@ import { deleteFile } from "@/lib/storage";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    assertSameOrigin(request);
     const user = await requireApiUser();
     const { id } = await context.params;
     const detail = await getApplicationDetail(user.id, id);
