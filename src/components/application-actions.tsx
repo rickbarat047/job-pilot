@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { supportedAtsForUrl } from "@/lib/ats-safety";
 
-export function ApplicationActions({ id, state, method, approvalDisabled = false }: { id: string; state: string; method: string; approvalDisabled?: boolean }) {
+export function ApplicationActions({ id, state, method, applicationUrl, approvalDisabled = false }: { id: string; state: string; method: string; applicationUrl: string; approvalDisabled?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState("");
   const [message, setMessage] = useState("");
@@ -58,6 +59,7 @@ export function ApplicationActions({ id, state, method, approvalDisabled = false
 
   const canConfirm = state === "Approved" || state === "Applying";
   const browserUnavailable = workerOnline === false;
+  const browserSupported = supportedAtsForUrl(applicationUrl) !== null;
 
   return (
     <div className="space-y-2">
@@ -82,7 +84,7 @@ export function ApplicationActions({ id, state, method, approvalDisabled = false
             </Button>
           )}
 
-          {method !== "browser" && method !== "email" ? (
+          {method !== "browser" && method !== "email" && browserSupported ? (
             <Button
               className="w-full"
               variant="outline"
@@ -93,8 +95,11 @@ export function ApplicationActions({ id, state, method, approvalDisabled = false
             </Button>
           ) : null}
 
-          {browserUnavailable ? (
+          {browserUnavailable && browserSupported ? (
             <p className="text-xs text-muted-foreground">Browser worker is offline. Use the official page or start the worker from Settings.</p>
+          ) : null}
+          {!browserSupported && method !== "email" ? (
+            <p className="text-xs text-muted-foreground">Browser automation supports select secure hiring systems only. Complete this application on the employer&apos;s official page.</p>
           ) : null}
         </>
       )}

@@ -19,12 +19,14 @@ export function ApplicationReview({
   id,
   state,
   method,
+  applicationUrl,
   questions,
   materials,
 }: {
   id: string;
   state: string;
   method: string;
+  applicationUrl: string;
   questions: Question[];
   materials: {
     summary: string;
@@ -42,7 +44,7 @@ export function ApplicationReview({
   return (
     <div className="space-y-4">
       <DataCard title="Actions" description="Application actions follow your review settings.">
-        <ApplicationActions id={id} state={state} method={method} approvalDisabled={hasUnsavedEdits} />
+        <ApplicationActions id={id} state={state} method={method} applicationUrl={applicationUrl} approvalDisabled={hasUnsavedEdits} />
       </DataCard>
       <Card>
         <CardHeader><CardTitle>Review your application text</CardTitle></CardHeader>
