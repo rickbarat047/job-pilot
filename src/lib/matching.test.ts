@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchJob } from "./matching";
+import { candidateYears, matchJob } from "./matching";
 import type { CandidateProfile, CandidatePreferences, NormalizedJob } from "./types";
 
 const profile: CandidateProfile = {
@@ -87,5 +87,33 @@ describe("matchJob", () => {
     expect(result.qualified).toBe(false);
     expect(result.experienceScore).toBeLessThanOrEqual(20);
     expect(result.recommendedAction).toMatch(/skip/i);
+  });
+});
+
+describe("candidateYears", () => {
+  it("uses dated periods and merges overlaps instead of counting each role as a year", () => {
+    const result = candidateYears({
+      ...profile,
+      experienceYears: 0,
+      experience: [
+        { role: "Engineer", company: "A", startDate: "2024-01-01", endDate: "2025-01-01", description: "" },
+        { role: "Intern", company: "B", startDate: "2024-06-01", endDate: "2025-06-01", description: "" },
+      ],
+    });
+    expect(result).toBeGreaterThan(1.4);
+    expect(result).toBeLessThan(1.43);
+  });
+
+  it("does not invent experience duration when profile entries lack dates", () => {
+    expect(candidateYears({
+      ...profile,
+      experienceYears: 0,
+      experience: [{ role: "Engineer", company: "A", description: "Two years of work" }],
+      internships: [{ role: "Intern", company: "B", description: "Completed an internship" }],
+    })).toBe(0);
+  });
+
+  it("prefers a candidate-provided total when available", () => {
+    expect(candidateYears({ ...profile, experienceYears: 2.25, experience: [] })).toBe(2.25);
   });
 });

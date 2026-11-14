@@ -435,7 +435,7 @@ export async function getApplications(userId: string, filters: { state?: string;
 
 export async function getApplicationDetail(userId: string, applicationId: string) {
   const row = await get<Row>(
-    `SELECT a.*, j.title as job_title, j.company_name, j.description as job_description, j.location, j.application_url,
+    `SELECT a.*, j.title as job_title, j.company_name, j.description as job_description, j.location, j.application_url, j.status as job_status,
       j.application_method as job_method, j.salary_text, j.remote_status, j.employment_type, j.skills_required,
       j.company_website, j.career_page_url
      FROM applications a JOIN jobs j ON j.id = a.job_id WHERE a.id = ? AND a.user_id = ?`,
@@ -464,6 +464,7 @@ export async function getApplicationDetail(userId: string, applicationId: string
     job: {
       id: s(row.job_id), title: s(row.job_title), company: s(row.company_name), description: s(row.job_description),
       location: s(row.location), applicationUrl: s(row.application_url), method: s(row.job_method, "external"),
+      status: s(row.job_status, "active"),
       salaryText: s(row.salary_text) || null, remoteStatus: s(row.remote_status), employmentType: s(row.employment_type),
       skills: parseJson<string[]>(s(row.skills_required, "[]"), []), website: s(row.company_website) || null,
       careerPageUrl: s(row.career_page_url) || null,

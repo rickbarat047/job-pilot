@@ -98,7 +98,7 @@ async function runTask(userId: string, type: string, payload: Record<string, unk
       const categories = new Set(permissions.autoApplyCategories.map((value) => value.toLowerCase()));
       const rows = await all<{ job_id: string; overall_score: number; title: string; role_family: string | null }>(
         `SELECT jm.job_id, jm.overall_score, j.title, jm.role_family FROM job_matches jm JOIN jobs j ON j.id = jm.job_id
-         WHERE jm.user_id = ? AND jm.overall_score >= ? AND jm.qualified = 1 ORDER BY jm.overall_score DESC LIMIT 5`,
+         WHERE jm.user_id = ? AND jm.overall_score >= ? AND jm.qualified = 1 AND j.status = 'active' ORDER BY jm.overall_score DESC LIMIT 5`,
         [userId, minScore],
       );
       const decision = evaluatePermission(permissions, "auto_apply");

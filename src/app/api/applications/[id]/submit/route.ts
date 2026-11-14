@@ -9,6 +9,7 @@ import { enqueueTask, workerIsOnline } from "@/lib/automation";
 import { relativeStoragePath } from "@/lib/storage";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { supportedAtsForUrl } from "@/lib/ats-safety";
+import { isActiveForAutomatedApplication } from "@/lib/job-verification";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -60,6 +61,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     if (method === "browser") {
       assertPermission(permissions, "submit_application");
+      if (!isActiveForAutomatedApplication(detail.job.status)) {
+        return NextResponse.json({ error: "This listing is no longer marked active. Browser submission is paused; check the employer page and refresh discovery." }, { status: 409 });
+      }
       if (!supportedAtsForUrl(detail.job.applicationUrl)) {
         return NextResponse.json({ error: "Browser automation is available only for secure links on supported hiring systems. Open this employer link and complete the application manually." }, { status: 400 });
       }

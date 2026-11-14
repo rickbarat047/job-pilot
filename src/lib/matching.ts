@@ -34,10 +34,32 @@ export function normalizeWeights(weights?: Partial<MatchWeights> | null): MatchW
 
 export function candidateYears(profile: CandidateProfile): number {
   if (Number.isFinite(profile.experienceYears) && profile.experienceYears > 0) return profile.experienceYears;
-  const all = [...(profile.experience ?? []), ...(profile.internships ?? [])];
-  if (all.length === 0) return 0;
-  const internshipOnly = (profile.experience ?? []).length === 0;
-  return internshipOnly ? 0.5 : Math.max(0, all.length);
+  const now = Date.now();
+  const intervals = [...(profile.experience ?? []), ...(profile.internships ?? [])]
+    .flatMap((entry) => {
+      if (!entry.startDate) return [];
+      const start = Date.parse(entry.startDate);
+      const endText = entry.endDate?.trim() ?? "";
+      const end = /^(present|current|now)$/i.test(endText) ? now : Date.parse(endText);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || start > now) return [];
+      return [{ start, end: Math.min(end, now) }];
+    })
+    .sort((a, b) => a.start - b.start);
+  if (!intervals.length) return 0;
+
+  let totalMs = 0;
+  let rangeStart = intervals[0].start;
+  let rangeEnd = intervals[0].end;
+  for (const interval of intervals.slice(1)) {
+    if (interval.start <= rangeEnd) rangeEnd = Math.max(rangeEnd, interval.end);
+    else {
+      totalMs += rangeEnd - rangeStart;
+      rangeStart = interval.start;
+      rangeEnd = interval.end;
+    }
+  }
+  totalMs += rangeEnd - rangeStart;
+  return totalMs / (365.25 * 24 * 60 * 60 * 1000);
 }
 
 export function profileSkillSet(profile: CandidateProfile): Set<string> {

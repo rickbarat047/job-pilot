@@ -63,7 +63,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               <Badge>{data.job.source}</Badge>
               <Badge variant="outline">{data.job.remoteStatus}</Badge>
               {data.job.salaryText ? <Badge variant="outline">{data.job.salaryText}</Badge> : null}
+              {data.job.status === "expired" ? <Badge variant="outline">Confirmed closed</Badge> : null}
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {data.job.lastVerifiedAt && Number.isFinite(Date.parse(data.job.lastVerifiedAt))
+                ? `${data.job.source === "manual" ? "Added to JobPilot" : "Last seen in source"} ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(data.job.lastVerifiedAt))}. Confirm the role is still open on the employer site.`
+                : "Confirm the role is still open on the employer site before applying."}
+            </p>
           </div>
           <div className="rounded-2xl border border-border bg-card px-4 py-3 text-right sm:px-5">
             <div className="font-display text-3xl font-semibold sm:text-4xl">{data.match.overallScore}%</div>
@@ -184,6 +190,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 <Link href={`/applications/${data.applicationId}`} className={cn(buttonVariants({ size: "default" }), "w-full bg-primary text-primary-foreground")}>
                   View application
                 </Link>
+              ) : data.job.status === "expired" ? (
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>This listing was confirmed closed, so JobPilot won’t prepare or automate a new application for it. Check the employer page if you think it has reopened.</p>
+                  <Link href="/jobs" className={cn(buttonVariants({ variant: "outline", size: "default" }), "w-full")}>Refresh job discovery</Link>
+                </div>
               ) : (
                 <TailorButton jobId={data.job.id} />
               )}

@@ -13,7 +13,7 @@ import { JobCard } from "@/components/ui/job-card";
 import { cn } from "@/lib/utils";
 
 interface JobItem {
-  job: { id: string; title: string; companyName: string; location: string; remoteStatus: string; employmentType: string; salaryText?: string | null; source: string; postedAt?: string | null };
+  job: { id: string; title: string; companyName: string; location: string; remoteStatus: string; employmentType: string; salaryText?: string | null; source: string; postedAt?: string | null; lastVerifiedAt?: string | null };
   match: { overallScore: number; recommendedAction: string; strengths: string[] };
   savedState: string | null;
   applicationId: string | null;
@@ -95,8 +95,11 @@ export default function JobsPage() {
     try {
       const response = await fetch(`/api/jobs?${params.toString()}`);
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to load jobs.");
       setJobs(data.items ?? []);
       setTotal(data.total ?? 0);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load jobs.");
     } finally {
       setLoading(false);
     }
@@ -105,6 +108,8 @@ export default function JobsPage() {
   useEffect(() => {
     const initialQuery = new URLSearchParams(window.location.search).get("query") ?? "";
     if (initialQuery) {
+      // Initialize the controlled search field from the URL on first mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery(initialQuery);
       void load({ query: initialQuery });
     } else {
@@ -121,8 +126,27 @@ export default function JobsPage() {
 
   async function runDiscovery() {
     setLoading(true);
-    await fetch("/api/discovery/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
-    await load();
+    try {
+      const response = await fetch("/api/discovery/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Job discovery could not run.");
+      const failedSources = (result.sources ?? []).filter((item: { errors?: string[]; unavailable?: string }) => item.errors?.length || item.unavailable);
+      if (failedSources.length || result.errors?.length) {
+        const sourceNames = failedSources.slice(0, 3).map((item: { key: string }) => item.key);
+        const remaining = failedSources.length - sourceNames.length;
+        toast.warning(`Found ${result.fetched ?? 0} roles; ${result.inserted ?? 0} new. Some sources were unavailable.`, {
+          description: sourceNames.length
+            ? `${sourceNames.join(", ")}${remaining > 0 ? `, and ${remaining} more` : ""}`
+            : "Check source status in Automation for details.",
+        });
+      } else {
+        toast.success(`Found ${result.fetched ?? 0} roles; ${result.inserted ?? 0} new roles added.`);
+      }
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Job discovery could not run.");
+      setLoading(false);
+    }
   }
 
   function clearFilters() {
@@ -322,6 +346,7 @@ export default function JobsPage() {
                   salaryText: item.job.salaryText,
                   source: item.job.source,
                   postedAt: item.job.postedAt,
+                  lastVerifiedAt: item.job.lastVerifiedAt,
                   description: null,
                 }}
                 score={item.match.overallScore}

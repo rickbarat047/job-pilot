@@ -150,11 +150,26 @@ export function parseLocation(rawLocation: string, description = "", workplaceTy
 }
 
 export function isIndiaEligibleRemote(location: string, description = ""): boolean {
-  const hay = `${location} ${description.slice(0, 800)}`.toLowerCase();
-  if (/\bindia\b/.test(hay)) return true;
-  if (/worldwide|work from anywhere|anywhere in the world|global remote/.test(hay)) return true;
-  if (/remote/.test(hay) && !/only|must be based|must reside|authorized to work|eligible to work/.test(hay)) return true;
-  return false;
+  const place = normalizeWhitespace(location).toLowerCase();
+  const details = normalizeWhitespace(description.slice(0, 2000)).toLowerCase();
+  const eligibilityText = `${place} ${details}`;
+  const excludesIndia = /\b(?:not|no longer|excluding|except)\s+(?:eligible\s+)?(?:candidates?\s+from\s+)?india\b|\bindia\b.{0,30}\b(?:not eligible|excluded|unavailable|ineligible)\b|\boutside india\b/.test(eligibilityText);
+  if (excludesIndia) return false;
+
+  const worldwide = /\b(?:worldwide|anywhere in the world|work from anywhere|remote from anywhere|global(?:ly)? remote|remote globally|all countries)\b/.test(eligibilityText);
+  if (worldwide) return true;
+
+  if (/\bindia\b/.test(place)) return true;
+
+  const indiaSpecific = [
+    /\bremote\b.{0,60}\b(?:in|from|within) india\b/,
+    /\b(?:in|from|within) india\b.{0,60}\bremote\b/,
+    /\b(?:must be|based|located|reside|resident) in india\b/,
+    /\b(?:candidates?|applicants?) in india\b/,
+    /\b(?:eligible|authorized|authorised) to work in india\b/,
+    /\bindia[- ]based candidates?\b/,
+  ].some((pattern) => pattern.test(details));
+  return indiaSpecific;
 }
 
 export function detectEmploymentType(title: string, rawType = "", description = ""): EmploymentType {

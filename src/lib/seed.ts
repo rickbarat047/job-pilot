@@ -79,7 +79,7 @@ export async function seedDemo(): Promise<{ userId: string; discovery?: unknown;
     discovery = { error: error instanceof Error ? error.message : String(error) };
   }
 
-  return { userId, discovery, message: "Demo account ready. Email: demo@jobpilot.ai, Password: Demo@12345" };
+  return { userId, discovery, message: "Demo account ready. Use the local demo credentials from the development guide to sign in." };
 }
 
 

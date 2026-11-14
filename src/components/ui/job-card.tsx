@@ -15,6 +15,7 @@ export interface JobCardData {
   salaryText?: string | null;
   source: string;
   postedAt?: string | null;
+  lastVerifiedAt?: string | null;
   description?: string | null;
   overallScore?: number | null;
 }
@@ -78,6 +79,11 @@ export function JobCard({ job, score, action }: { job: JobCardData; score?: numb
               ? `Posted ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(job.postedAt))}`
               : "Posting date not provided by source"}
           </p>
+          {job.lastVerifiedAt && Number.isFinite(Date.parse(job.lastVerifiedAt)) ? (
+            <p className="mt-1 text-xs text-muted-foreground" title="This date records when the listing was last seen by JobPilot; confirm the role is still open on the employer site.">
+              {job.source === "manual" ? "Added by you" : "Last seen in source"} {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(job.lastVerifiedAt))}
+            </p>
+          ) : null}
         </div>
         {typeof score === "number" ? (
           <div className="flex shrink-0 flex-col items-end gap-1">

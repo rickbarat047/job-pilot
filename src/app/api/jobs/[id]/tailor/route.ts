@@ -32,6 +32,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     const prefs = await getPreferences(user.id);
     const job = await getJobById(jobId);
     if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
+    if (job.status === "expired") {
+      return NextResponse.json({ error: "This listing was confirmed closed. Run discovery to check whether the employer has reopened it before preparing an application." }, { status: 409 });
+    }
 
     const duplicateKey = applicationDuplicateKey(user.id, job.companyName, job.title);
     const existing = await get<{ id: string; state: string }>("SELECT id, state FROM applications WHERE user_id = ? AND duplicate_key = ?", [user.id, duplicateKey]);

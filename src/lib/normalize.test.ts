@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLocation, parseSalary, stripHtml, jobFingerprint } from "./normalize";
+import { parseLocation, parseSalary, stripHtml, jobFingerprint, isIndiaEligibleRemote } from "./normalize";
 import { titleSimilarity, dedupeBatch, applicationDuplicateKey } from "./dedupe";
 import type { NormalizedJob } from "./types";
 
@@ -23,6 +23,22 @@ describe("normalize", () => {
 
   it("creates stable fingerprints", () => {
     expect(jobFingerprint("Groww", "Quality Engineer", "Bengaluru")).toBe(jobFingerprint("Groww", "Quality Engineer", "Bengaluru"));
+  });
+});
+
+describe("India eligibility for remote roles", () => {
+  it("accepts India-specific and clearly worldwide eligibility", () => {
+    expect(isIndiaEligibleRemote("Remote — India")).toBe(true);
+    expect(isIndiaEligibleRemote("Remote", "Candidates must be based in India.")).toBe(true);
+    expect(isIndiaEligibleRemote("Remote", "This role is open to candidates worldwide.")).toBe(true);
+    expect(isIndiaEligibleRemote("Remote", "Work from anywhere in the world.")).toBe(true);
+  });
+
+  it("rejects vague remote locations and listings that exclude India", () => {
+    expect(isIndiaEligibleRemote("Remote")).toBe(false);
+    expect(isIndiaEligibleRemote("Remote", "This is a remote role. Our India team works with the US team.")).toBe(false);
+    expect(isIndiaEligibleRemote("Remote", "Work from anywhere except India.")).toBe(false);
+    expect(isIndiaEligibleRemote("Remote", "Remote role, but candidates outside India only.")).toBe(false);
   });
 });
 

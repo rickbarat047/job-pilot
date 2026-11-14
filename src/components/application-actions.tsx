@@ -10,6 +10,7 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
   const [loading, setLoading] = useState("");
   const [message, setMessage] = useState("");
   const [workerOnline, setWorkerOnline] = useState<boolean | null>(null);
+  const [manualApplicationUrl, setManualApplicationUrl] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -23,38 +24,48 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
   async function run(name: string, body?: Record<string, unknown>, key = name) {
     setLoading(key);
     setMessage("");
-    const response = await fetch(`/api/applications/${id}/${name}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body ?? {}),
-    });
-    const data = await response.json().catch(() => ({}));
-    setLoading("");
-    if (!response.ok) {
-      setMessage(data.error || "Action failed.");
-      toast.error(data.error || "Action failed.");
-      return;
+    setManualApplicationUrl("");
+    try {
+      const response = await fetch(`/api/applications/${id}/${name}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.error || "Action failed.");
+        toast.error(data.error || "Action failed.");
+        return;
+      }
+      if (data.requiresManual && data.applicationUrl) {
+        setManualApplicationUrl(data.applicationUrl);
+        setMessage("The employer application page is ready below. Complete it there, then click “I applied manually”.");
+        toast.info("Employer application page is ready.");
+      } else {
+        if (typeof data.repliesFound === "number") {
+          const found = Number(data.repliesFound);
+          const already = Number(data.alreadyRecorded || 0);
+          const text = found > 0
+            ? `${found} new ${found === 1 ? "reply" : "replies"} recorded.`
+            : already > 0
+              ? `No new replies. ${already} previously recorded reply${already === 1 ? " is" : "ies are"} already in the timeline.`
+              : "No matching replies found in the last 14 days.";
+          setMessage(text);
+          if (found > 0) toast.success(text); else toast.info(text);
+        } else if (data.state) {
+          setMessage(data.method === "browser" ? "Browser automation queued. This page refreshes automatically in a moment." : `Status updated to ${data.state}.`);
+          toast.success(data.method === "browser" ? "Browser automation queued." : `Status updated to ${data.state}.`);
+          if (data.method === "browser") window.setTimeout(() => router.refresh(), 2500);
+        }
+      }
+      router.refresh();
+    } catch {
+      const error = "Could not reach JobPilot. Check your connection; confirm the application status before retrying.";
+      setMessage(error);
+      toast.error(error);
+    } finally {
+      setLoading("");
     }
-    if (data.requiresManual && data.applicationUrl) {
-      window.open(data.applicationUrl, "_blank", "noopener,noreferrer");
-      setMessage("Opened the official application page. Complete it there, then click “I applied manually”.");
-      toast.info("Official application page opened.");
-    } else if (typeof data.repliesFound === "number") {
-      const found = Number(data.repliesFound);
-      const already = Number(data.alreadyRecorded || 0);
-      const text = found > 0
-        ? `${found} new ${found === 1 ? "reply" : "replies"} recorded.`
-        : already > 0
-          ? `No new replies. ${already} previously recorded reply${already === 1 ? " is" : "ies are"} already in the timeline.`
-          : "No matching replies found in the last 14 days.";
-      setMessage(text);
-      if (found > 0) toast.success(text); else toast.info(text);
-    } else if (data.state) {
-      setMessage(data.method === "browser" ? "Browser automation queued. This page refreshes automatically in a moment." : `Status updated to ${data.state}.`);
-      toast.success(data.method === "browser" ? "Browser automation queued." : `Status updated to ${data.state}.`);
-      if (data.method === "browser") window.setTimeout(() => router.refresh(), 2500);
-    }
-    router.refresh();
   }
 
   const canConfirm = state === "Approved" || state === "Applying";
@@ -134,6 +145,7 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
       {state === "Application Failed" && <Button className="w-full" variant="outline" onClick={() => run("retry")} disabled={!!loading}>Retry application</Button>}
       {!["Rejected", "Withdrawn", "Offer"].includes(state) && <Button className="w-full" variant="ghost" onClick={() => run("withdraw")} disabled={!!loading}>Withdraw</Button>}
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
+      {manualApplicationUrl ? <a className="text-xs font-medium text-primary underline" href={manualApplicationUrl} target="_blank" rel="noreferrer">Open employer application page</a> : null}
     </div>
   );
 }

@@ -10,15 +10,20 @@ export function TailorButton({ jobId }: { jobId: string }) {
   async function run() {
     setLoading(true);
     setError("");
-    const response = await fetch(`/api/jobs/${jobId}/tailor`, { method: "POST" });
-    const data = await response.json().catch(() => ({}));
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error || "Unable to tailor.");
-      return;
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/tailor`, { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || "Unable to prepare this application.");
+        return;
+      }
+      router.push(`/applications/${data.applicationId}`);
+      router.refresh();
+    } catch {
+      setError("Could not reach JobPilot. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-    router.push(`/applications/${data.applicationId}`);
-    router.refresh();
   }
   return (
     <div>

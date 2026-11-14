@@ -1,6 +1,7 @@
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { SCHEMA_SQL } from "./schema";
+import { toPgPlaceholders } from "./sql-placeholders";
 
 export type DbProvider = "sqlite" | "postgres";
 
@@ -30,7 +31,6 @@ function getSqlite() {
 
 function getPg() {
   if (!pgPool) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { Pool } = require("pg");
     const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     pgPool = new Pool({
@@ -43,11 +43,6 @@ function getPg() {
     });
   }
   return pgPool;
-}
-
-function toPgPlaceholders(sql: string): string {
-  let index = 0;
-  return sql.replace(/\?/g, () => `$${++index}`);
 }
 
 function normalizeParams(params: any[]): any[] {
@@ -63,7 +58,6 @@ export function nowIso(): string {
 }
 
 export function newId(prefix = "id"): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { randomUUID } = require("node:crypto");
   return `${prefix}_${randomUUID().replace(/-/g, "")}`;
 }
