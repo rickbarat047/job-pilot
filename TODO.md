@@ -11,6 +11,7 @@
 - Application pipeline, document generation, interview preparation, recruiter contacts, notifications, and analytics.
 - Playwright worker and ATS form automation with approval/permission controls.
 - Recently improved: fair rotation of job-link verification, safe fallback for sites rejecting `HEAD`, account export and deletion behavior, ownership of new manual job imports, and explicit consent controls for automatic submission.
+- Himalayas source handling now honors its documented 20-item page limit, excludes expired postings, and displays a visible source link on job cards and details.
 - Local verification: 38 test files / 194 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve

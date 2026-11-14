@@ -60,7 +60,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               {data.job.companyName} · {data.job.location} · {data.job.employmentType}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Badge>{data.job.source}</Badge>
+              {data.job.source === "himalayas" ? (
+                <a href="https://himalayas.app" target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-xs font-medium hover:underline">
+                  Source: Himalayas
+                </a>
+              ) : <Badge>{data.job.source}</Badge>}
               <Badge variant="outline">{data.job.remoteStatus}</Badge>
               {data.job.salaryText ? <Badge variant="outline">{data.job.salaryText}</Badge> : null}
               {data.job.status === "expired" ? <Badge variant="outline">Confirmed closed</Badge> : null}

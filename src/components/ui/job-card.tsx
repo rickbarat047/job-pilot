@@ -28,6 +28,7 @@ const SOURCE_LABELS: Record<string, string> = {
   ashby: "Ashby",
   recruitee: "Recruitee",
   remotive: "Remotive",
+  himalayas: "Himalayas",
   adzuna: "Adzuna",
   naukri: "Naukri",
   foundit: "Foundit",
@@ -67,7 +68,11 @@ export function JobCard({ job, score, action }: { job: JobCardData; score?: numb
             {facts.join(" · ")}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge variant="secondary">via {sourceLabel(job.source)}</Badge>
+            {job.source === "himalayas" ? (
+              <a href="https://himalayas.app" target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground hover:underline">
+                Source: Himalayas
+              </a>
+            ) : <Badge variant="secondary">via {sourceLabel(job.source)}</Badge>}
             {tags.map((tag) => (
               <Badge key={tag} variant="outline">
                 {tag}

@@ -118,8 +118,14 @@ export const remoteBoardsAdapter: JobSourceAdapter = {
     }
 
     try {
-      const data = await fetchJson<HimalayasResponse>("https://himalayas.app/jobs/api?limit=100", { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
+      // The public endpoint caps each response at 20 records. Its expiryDate
+      // is a Unix timestamp in seconds; expired postings must not be surfaced.
+      const data = await fetchJson<HimalayasResponse>("https://himalayas.app/jobs/api?limit=20", { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
       for (const job of data.jobs ?? []) {
+        if (typeof job.expiryDate === "number" && Number.isFinite(job.expiryDate) && job.expiryDate * 1000 <= Date.now()) {
+          skipped++;
+          continue;
+        }
         const restrictions = job.locationRestrictions ?? [];
         const locationText = restrictions.length ? restrictions.join(", ") : "Remote — eligibility not stated";
         if (!eligibleRemoteLocation(restrictions.join(", "))) {
