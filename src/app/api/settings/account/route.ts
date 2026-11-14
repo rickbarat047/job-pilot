@@ -92,6 +92,30 @@ export async function DELETE(request: Request) {
     // user can retry instead of silently leaving private files behind.
     await deleteUserFiles(user.id);
     await transaction(async (db) => {
+      // Legacy manual imports have no owner_user_id. Attribute only rows that
+      // this account references and no other account references, then remove
+      // them as part of this account's deletion. Shared or unreferenced legacy
+      // rows are left intact because their owner cannot be proven.
+      await db.run(
+        `DELETE FROM jobs
+         WHERE source='manual' AND owner_user_id IS NULL
+           AND id IN (
+             SELECT job_id FROM applications WHERE user_id=?
+             UNION SELECT job_id FROM job_matches WHERE user_id=?
+             UNION SELECT job_id FROM saved_jobs WHERE user_id=?
+             UNION SELECT job_id FROM resume_versions WHERE user_id=? AND job_id IS NOT NULL
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM (
+               SELECT job_id, user_id FROM applications
+               UNION ALL SELECT job_id, user_id FROM job_matches
+               UNION ALL SELECT job_id, user_id FROM saved_jobs
+               UNION ALL SELECT job_id, user_id FROM resume_versions WHERE job_id IS NOT NULL
+             ) AS other_refs
+             WHERE other_refs.job_id=jobs.id AND other_refs.user_id<>?
+           )`,
+        [user.id, user.id, user.id, user.id, user.id],
+      );
       const result = await db.run("DELETE FROM users WHERE id=?", [user.id]);
       if (affectedRows(result) !== 1) throw new Error("Account deletion did not remove the expected record.");
     });

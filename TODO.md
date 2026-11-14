@@ -19,6 +19,7 @@
 - Health readiness now returns HTTP 503 when the database, AI provider, or browser worker is unavailable, with component details in the response body.
 - All cookie-authenticated application mutations now enforce same-origin requests; withdraw/reject/retry also save status and timeline events atomically with state-change checks.
 - Browser worker success, manual-intervention, retry, and failure callbacks now claim tasks and write related application history atomically to prevent duplicate events after concurrent callbacks.
+- Account deletion removes legacy unowned manual imports only when they are referenced by that account and no other account; shared and unreferenced rows are preserved.
 - Local verification: 40 test files / 211 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve
@@ -26,7 +27,7 @@
 1. **Worker availability:** last read-only production health check returned HTTP 200 but reported `worker: offline`. The local health route now returns HTTP 503 for that state, but the fix is not deployed; production must pass a real queued-task round trip.
 2. **Build/deployment:** these local changes have not been built or deployed. The local Next.js build could not start because Windows denied access while SWC canonicalized the checkout path. Re-run build and browser/API smoke checks in a supported checkout or CI before release.
 3. **Production database:** migration `0005_manual_job_ownership.sql` is pending. Back up the production database and verify restore before applying it; do not deploy code relying on the new column until then.
-4. **Account deletion:** new manual imports are owner-scoped. Legacy unowned manual job rows cannot safely be attributed or removed automatically; design a scoped cleanup before claiming complete erasure of every legacy import.
+4. **Account deletion:** new manual imports are owner-scoped. Deletion now also removes legacy manual jobs only when the account references them and no other account does. Unreferenced or shared legacy rows remain because their owner cannot be proven.
 5. **Public access and domain:** production deployment protection is enabled and no custom domain was found. Decide and configure an intentional launch access model and domain before announcing the service.
 6. **Job coverage and freshness:** current sources cover a curated list of company ATS boards plus selected remote boards. Measure stale links and useful-role coverage with real candidate searches; broaden or clearly describe coverage.
 7. **Application safety:** validate the consent and approval flow on real supported ATS sites. Never claim automatic application success until each submission is confirmed by the destination site.

@@ -89,7 +89,11 @@ describe("account deletion route", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.deleteUserFiles).toHaveBeenCalledWith("usr_123");
-    expect(mocks.dbRun).toHaveBeenCalledWith("DELETE FROM users WHERE id=?", ["usr_123"]);
+    expect(mocks.dbRun).toHaveBeenCalledTimes(2);
+    expect(mocks.dbRun.mock.calls[0][0]).toContain("source='manual' AND owner_user_id IS NULL");
+    expect(mocks.dbRun.mock.calls[0][0]).toContain("other_refs.user_id<>?");
+    expect(mocks.dbRun.mock.calls[0][1]).toEqual(["usr_123", "usr_123", "usr_123", "usr_123", "usr_123"]);
+    expect(mocks.dbRun.mock.calls[1]).toEqual(["DELETE FROM users WHERE id=?", ["usr_123"]]);
     expect(mocks.deleteUserFiles.mock.invocationCallOrder[0]).toBeLessThan(mocks.transaction.mock.invocationCallOrder[0]);
     expect(mocks.transaction.mock.invocationCallOrder[0]).toBeLessThan(mocks.destroySession.mock.invocationCallOrder[0]);
   });
