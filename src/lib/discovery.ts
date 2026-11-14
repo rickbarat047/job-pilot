@@ -86,6 +86,13 @@ export interface DiscoveryResult {
   errors: string[];
 }
 
+export function shouldNotifyStrongMatch(
+  result: { overallScore: number; qualified: boolean },
+  previousScore: number | null,
+): boolean {
+  return result.qualified && result.overallScore >= 75 && (previousScore === null || previousScore < 75);
+}
+
 export async function runDiscovery(userId: string, options: DiscoveryOptions = {}): Promise<DiscoveryResult> {
   const permissions = await getPermissionsForUser(userId);
   const decision = evaluatePermission(permissions, "search_jobs");
@@ -156,7 +163,7 @@ export async function runDiscovery(userId: string, options: DiscoveryOptions = {
       const job = await getJobById(jobId);
       if (!job) continue;
       const result = matchJob(profile, prefs, job);
-      const existing = await get<{ id: string }>("SELECT id FROM job_matches WHERE user_id = ? AND job_id = ?", [userId, jobId]);
+      const existing = await get<{ id: string; overall_score: number }>("SELECT id, overall_score FROM job_matches WHERE user_id = ? AND job_id = ?", [userId, jobId]);
       if (existing) {
         await run(
           `UPDATE job_matches SET overall_score=?, skill_score=?, education_score=?, experience_score=?, career_score=?,
@@ -182,7 +189,7 @@ export async function runDiscovery(userId: string, options: DiscoveryOptions = {
         );
       }
       matched++;
-      if (result.overallScore >= 75) {
+      if (shouldNotifyStrongMatch(result, existing ? Number(existing.overall_score) : null)) {
         const jobRow = await get<{ title: string; company_name: string }>("SELECT title, company_name FROM jobs WHERE id = ?", [jobId]);
         await createNotification(userId, "match", "Strong job match", `${jobRow?.title ?? "A role"} at ${jobRow?.company_name ?? "a company"} scored ${result.overallScore}.`, `/jobs/${jobId}`);
         newHighMatches++;
