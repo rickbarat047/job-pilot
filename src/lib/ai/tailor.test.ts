@@ -103,6 +103,32 @@ describe("application question drafts", () => {
     }
   });
 
+  it("does not describe degree or location match signals as candidate skills", () => {
+    const mixedStrengths = {
+      ...match,
+      strengths: ["Strong location fit", "Bachelor's degree match", "CAD"],
+    } as JobMatchResult;
+    const questions = buildApplicationQuestions(profile, preferences, job, mixedStrengths);
+    const interest = questions.find((question) => question.question === "Why are you interested in this role?")?.answer ?? "";
+    const skills = questions.find((question) => question.question === "What are your strongest skills for this role?")?.answer ?? "";
+
+    expect(interest).toContain("listed strengths in CAD");
+    expect(interest).not.toContain("Strong location fit");
+    expect(interest).not.toContain("Bachelor's degree match");
+    expect(skills).toBe("CAD");
+  });
+
+  it("states uncertainty when no listed candidate skill is confirmed as a role strength", () => {
+    const questions = buildApplicationQuestions(profile, preferences, job, {
+      ...match,
+      strengths: ["Strong location fit", "Bachelor's degree match"],
+    } as JobMatchResult);
+    const skills = questions.find((question) => question.question === "What are your strongest skills for this role?")?.answer ?? "";
+
+    expect(skills).toContain("My profile lists Automotive Engineering, CAD, SolidWorks");
+    expect(skills).toContain("confirm which are most relevant");
+  });
+
   it("describes work and project entries accurately using only profile facts", () => {
     const questions = buildApplicationQuestions(profile, preferences, job, match);
     const answer = questions.find((question) => question.question === "What relevant experience do you bring?")?.answer ?? "";

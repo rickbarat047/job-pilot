@@ -162,6 +162,13 @@ function reorderSkills(profile: CandidateProfile, job: NormalizedJob): string[] 
   return [...matched, ...rest].slice(0, 18);
 }
 
+function profileSkillStrengths(profile: CandidateProfile, match: JobMatchResult, limit = 5): string[] {
+  const listedSkills = new Set(profile.skills.map((skill) => skill.name.trim().toLowerCase()).filter(Boolean));
+  return match.strengths
+    .filter((strength) => listedSkills.has(strength.trim().toLowerCase()))
+    .slice(0, limit);
+}
+
 export async function tailorApplication(profile: CandidateProfile, prefs: CandidatePreferences, job: NormalizedJob, match: JobMatchResult): Promise<TailoredPackage> {
   const resume: ResumeContent = {
     header: {
@@ -279,11 +286,12 @@ export function buildCoverLetter(profile: CandidateProfile, job: NormalizedJob, 
 }
 
 function buildRecruiterEmail(profile: CandidateProfile, job: NormalizedJob, match: JobMatchResult): string {
+  const relevantSkills = profileSkillStrengths(profile, match, 3);
   return `Dear Hiring Team,
 
 I hope you are doing well. I am writing to express my interest in the ${job.title} role at ${job.companyName}.
 
-I am ${profile.degree ? `a ${profile.degree} graduate` : "a candidate"}${profile.university ? ` from ${profile.university}` : ""}${profile.skills.length ? ` with skills in ${profile.skills.slice(0, 6).map((s) => s.name).join(", ")}` : ""}. I see relevant overlap with the role${match.strengths.length ? ` in ${match.strengths.slice(0, 3).join(", ")}` : ""}.
+I am ${profile.degree ? `a ${profile.degree} graduate` : "a candidate"}${profile.university ? ` from ${profile.university}` : ""}${profile.skills.length ? ` with skills in ${profile.skills.slice(0, 6).map((s) => s.name).join(", ")}` : ""}.${relevantSkills.length ? ` My listed skills overlap with the role in ${relevantSkills.join(", ")}.` : " I would welcome the opportunity to discuss how my listed background aligns with the role."}
 
 I would be grateful for the opportunity to discuss how I can contribute to your team. Please let me know if you need any additional information.
 
@@ -295,6 +303,7 @@ ${profile.phone ? profile.phone + "\n" : ""}${profile.email ? profile.email : ""
 }
 
 export function buildApplicationQuestions(profile: CandidateProfile, prefs: CandidatePreferences, job: NormalizedJob, match: JobMatchResult): ApplicationQuestionDraft[] {
+  const relevantSkills = profileSkillStrengths(profile, match, 3);
   const sensitive = (question: string): ApplicationQuestionDraft => ({
     question, answer: "", requiresApproval: true, sensitive: true,
   });
@@ -302,7 +311,7 @@ export function buildApplicationQuestions(profile: CandidateProfile, prefs: Cand
     question, answer, requiresApproval, sensitive: false,
   });
   return [
-    normal("Why are you interested in this role?", `I am interested in the ${job.title} role at ${job.companyName} because it focuses on ${match.roleFamily || job.title}${match.strengths.length ? `, including areas related to my listed strengths in ${match.strengths.slice(0, 3).join(", ")}` : ""}. I would welcome the opportunity to learn more about the work and how my background could contribute.`, false),
+    normal("Why are you interested in this role?", `I am interested in the ${job.title} role at ${job.companyName} because it focuses on ${match.roleFamily || job.title}${relevantSkills.length ? `, including areas related to my listed strengths in ${relevantSkills.join(", ")}` : ""}. I would welcome the opportunity to learn more about the work and how my background could contribute.`, false),
     normal(
       "What relevant experience do you bring?",
       (() => {
@@ -324,7 +333,11 @@ export function buildApplicationQuestions(profile: CandidateProfile, prefs: Cand
       })(),
       false,
     ),
-    normal("What are your strongest skills for this role?", match.strengths.join(", ") || profile.skills.slice(0, 6).map((skill) => skill.name).filter(Boolean).join(", "), false),
+    normal("What are your strongest skills for this role?", relevantSkills.length
+      ? relevantSkills.join(", ")
+      : profile.skills.length
+        ? `My profile lists ${profile.skills.slice(0, 6).map((skill) => skill.name).join(", ")}; I would like to confirm which are most relevant to this role.`
+        : "I would like to review the role requirements and provide an accurate answer.", false),
     normal("What is your notice period or availability?", profile.noticePeriod ? `My current notice period is ${profile.noticePeriod}.` : "", !profile.noticePeriod),
     normal("What are your salary expectations?", prefs.salaryFlexible ? "I am flexible and open to discussing a fair offer based on the role and market standards." : (prefs.minSalaryLpa ? `I am looking for around ₹${prefs.minSalaryLpa} LPA, but I am open to discussion.` : ""), !prefs.salaryFlexible && !prefs.minSalaryLpa),
     normal("Are you willing to relocate?", prefs.flexibility?.willingToRelocate ? "Yes, I am open to relocating for the right opportunity." : "", !prefs.flexibility?.willingToRelocate),

@@ -19,12 +19,13 @@
 - Health readiness now returns HTTP 503 when the database, AI provider, or browser worker is unavailable, with component details in the response body.
 - All cookie-authenticated application mutations now enforce same-origin requests; withdraw/reject/retry also save status and timeline events atomically with state-change checks.
 - Browser worker success, manual-intervention, retry, and failure callbacks now claim tasks and write related application history atomically to prevent duplicate events after concurrent callbacks.
+- Application-answer drafts now only describe matched profile skills as candidate strengths; education and location fit signals are not mislabeled as skills, and uncertain relevance is stated for the candidate to review.
 - Account deletion removes legacy unowned manual imports only when they are referenced by that account and no other account; shared and unreferenced rows are preserved.
-- Local verification: 40 test files / 211 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
+- Local verification: 40 test files / 213 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve
 
-1. **Worker availability:** last read-only production health check returned HTTP 200 but reported `worker: offline`. The local health route now returns HTTP 503 for that state, but the fix is not deployed; production must pass a real queued-task round trip.
+1. **Worker availability:** latest read-only production health check (2026-11-14 17:05:19 UTC) returned HTTP 200 but reported `worker: offline`. The local health route now returns HTTP 503 for that state, but the fix is not deployed; production must pass a real queued-task round trip. Historical run logs record a mismatch between the GitHub Actions and Vercel `WORKER_TOKEN` secrets; both must be aligned, then a successful heartbeat and real queued-task round trip verified.
 2. **Build/deployment:** these local changes have not been built or deployed. The local Next.js build could not start because Windows denied access while SWC canonicalized the checkout path. Re-run build and browser/API smoke checks in a supported checkout or CI before release.
 3. **Production database:** migration `0005_manual_job_ownership.sql` is pending. Back up the production database and verify restore before applying it; do not deploy code relying on the new column until then.
 4. **Account deletion:** new manual imports are owner-scoped. Deletion now also removes legacy manual jobs only when the account references them and no other account does. Unreferenced or shared legacy rows remain because their owner cannot be proven.
@@ -38,4 +39,4 @@ Production data/schema changes, environment-variable changes, and deployments re
 
 ## Latest external check
 
-Read-only Vercel inspection found a READY production deployment, SSO protection enabled, and `/api/health` returning `database: ok`, `ai: configured`, `worker: offline`. This describes the deployment before the local uncommitted changes; it is not launch sign-off.
+Read-only Vercel inspection on 2026-11-14 found READY production deployment `dpl_EqRRHTwAGmMcb6z9vFaT4s6rQKgz` (commit `6c94643744b652194e59950290a4bbbd465aa435`), project `live: false`, SSO protection enabled, and no custom domain attached. Its `/api/health` response was HTTP 200 with `database: ok`, `ai: configured`, `worker: offline`, timestamp `2026-11-14T17:05:19.292Z`. The latest local candidate-materials change is not deployed; this is not launch sign-off.
