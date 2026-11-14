@@ -25,6 +25,7 @@ const s = (v: unknown, fallback = ""): string => {
 };
 const n = (v: unknown, fallback = 0): number => (v === null || v === undefined ? fallback : Number(v));
 const nullableNum = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
+const likeContains = (value: string): string => `%${value.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
 
 export async function getProfile(userId: string): Promise<CandidateProfile> {
   const row = await get<Row>("SELECT * FROM candidate_profiles WHERE user_id = ?", [userId]);
@@ -272,14 +273,18 @@ export async function getJobsForUser(userId: string, filters: JobFilters = {}): 
   const where: string[] = ["j.status != 'expired'", "m.user_id = ?"];
   const params: (string | number)[] = [userId];
   if (filters.query) {
-    where.push("(j.title LIKE ? OR j.company_name LIKE ? OR j.description LIKE ?)");
-    const q = `%${filters.query}%`;
+    // LOWER + LIKE is portable across SQLite and PostgreSQL (unlike ILIKE),
+    // so candidate searches behave the same in local and production databases.
+    // Escape user-provided LIKE wildcards so `%` and `_` are searched literally.
+    where.push("(LOWER(j.title) LIKE ? ESCAPE '\\' OR LOWER(j.company_name) LIKE ? ESCAPE '\\' OR LOWER(j.description) LIKE ? ESCAPE '\\')");
+    const q = likeContains(filters.query);
     params.push(q, q, q);
   }
   if (filters.source) { where.push("j.source = ?"); params.push(filters.source); }
   if (filters.location) {
-    where.push("(j.city LIKE ? OR j.location LIKE ?)");
-    params.push(`%${filters.location}%`, `%${filters.location}%`);
+    where.push("(LOWER(j.city) LIKE ? ESCAPE '\\' OR LOWER(j.location) LIKE ? ESCAPE '\\')");
+    const location = likeContains(filters.location);
+    params.push(location, location);
   }
   if (filters.remote) { where.push("j.remote_status = ?"); params.push(filters.remote); }
   if (filters.employment) { where.push("j.employment_type = ?"); params.push(filters.employment); }
