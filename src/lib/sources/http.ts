@@ -227,17 +227,34 @@ export async function fetchHead(
   url: string,
   options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
 ): Promise<{ status: number; finalUrl: string }> {
-  const { response, finalUrl } = await fetchWithValidatedRedirects(
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const head = await fetchWithValidatedRedirects(
     url,
     {
       method: "HEAD",
-      signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { "user-agent": USER_AGENT },
       cache: "no-store",
     },
     options.fetchImpl,
   );
-  return { status: response.status, finalUrl };
+  if (head.response.status !== 405 && head.response.status !== 501) {
+    return { status: head.response.status, finalUrl: head.finalUrl };
+  }
+
+  // Some employer hosts reject HEAD despite serving the same page to browsers.
+  // Retry with a one-byte range GET through the same DNS and redirect checks.
+  const get = await fetchWithValidatedRedirects(
+    url,
+    {
+      method: "GET",
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { "user-agent": USER_AGENT, range: "bytes=0-0" },
+      cache: "no-store",
+    },
+    options.fetchImpl,
+  );
+  return { status: get.response.status, finalUrl: get.finalUrl };
 }
 
 export function isPrivateHost(hostname: string): boolean {

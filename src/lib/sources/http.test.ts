@@ -96,6 +96,28 @@ describe("fetchHead redirect handling", () => {
     await expect(fetchHead("https://example.com/start", { fetchImpl })).rejects.toThrow();
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
+
+  it.each([405, 501])("retries a %i response with a one-byte range GET", async (status) => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status }))
+      .mockResolvedValueOnce(new Response("x", { status: 200 }));
+    const result = await fetchHead("https://example.com/job", { fetchImpl });
+    expect(result).toEqual({ status: 200, finalUrl: "https://example.com/job" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0][1]?.method).toBe("HEAD");
+    expect(fetchImpl.mock.calls[1][1]?.method).toBe("GET");
+    expect(new Headers(fetchImpl.mock.calls[1][1]?.headers).get("range")).toBe("bytes=0-0");
+  });
+
+  it("keeps the safe redirect checks on the GET fallback", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 405 }))
+      .mockResolvedValueOnce(new Response("", { status: 302, headers: { location: "http://127.0.0.1/internal" } }));
+    await expect(fetchHead("https://example.com/job", { fetchImpl })).rejects.toThrow();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("fetchJson redirect handling", () => {
