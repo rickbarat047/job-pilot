@@ -19,6 +19,12 @@ export interface WorkerResultInput {
   screenshotPath?: string;
 }
 
+export function workerSafeAnswers(questions: Array<{ question: string; answer: string; sensitive?: boolean; requiresApproval?: boolean }>) {
+  return questions
+    .filter((question) => question.answer && question.answer.trim() && !question.sensitive && !question.requiresApproval)
+    .map((question) => ({ question: question.question, answer: question.answer, sensitive: false }));
+}
+
 const STALE_LOCK_MS = 10 * 60 * 1000;
 
 /**
@@ -148,13 +154,7 @@ export async function getWorkerTaskPayload(taskId: string, baseUrl: string) {
       filename: doc.filename,
       downloadUrl: `${origin}/api/automation/worker/documents/${encodeURIComponent(doc.id)}?taskId=${encodeURIComponent(String(task.id))}`,
     })),
-    answers: detail.questions
-      .filter((question) => question.answer && question.answer.trim() && !question.sensitive && !question.requiresApproval)
-      .map((question) => ({
-        question: question.question,
-        answer: question.answer,
-        sensitive: false,
-      })),
+    answers: workerSafeAnswers(detail.questions),
     submit: payload.submit !== false,
     demoMode: false,
   };

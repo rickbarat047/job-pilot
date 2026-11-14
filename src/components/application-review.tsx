@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ApplicationActions } from "@/components/application-actions";
+import { ApplicationMaterialsEditor } from "@/components/application-materials-editor";
 import { ApplicationQuestionsEditor } from "@/components/application-questions-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataCard } from "@/components/ui/data-card";
@@ -19,20 +20,36 @@ export function ApplicationReview({
   state,
   method,
   questions,
+  materials,
 }: {
   id: string;
   state: string;
   method: string;
   questions: Question[];
+  materials: {
+    summary: string;
+    coverLetterText: string;
+    emailSubject?: string;
+    emailBody?: string;
+    emailTo?: string;
+  };
 }) {
-  const [hasUnsavedAnswers, setHasUnsavedAnswers] = useState(false);
+  const [unsavedQuestions, setUnsavedQuestions] = useState(false);
+  const [unsavedMaterials, setUnsavedMaterials] = useState(false);
+  const hasUnsavedEdits = unsavedQuestions || unsavedMaterials;
   const editable = ["Draft Ready", "Awaiting Approval"].includes(state);
 
   return (
     <div className="space-y-4">
       <DataCard title="Actions" description="Application actions follow your review settings.">
-        <ApplicationActions id={id} state={state} method={method} approvalDisabled={hasUnsavedAnswers} />
+        <ApplicationActions id={id} state={state} method={method} approvalDisabled={hasUnsavedEdits} />
       </DataCard>
+      <Card>
+        <CardHeader><CardTitle>Review your application text</CardTitle></CardHeader>
+        <CardContent>
+          <ApplicationMaterialsEditor applicationId={id} materials={materials} editable={editable} onDirtyChange={setUnsavedMaterials} />
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader><CardTitle>Application questions</CardTitle></CardHeader>
         <CardContent>
@@ -40,7 +57,7 @@ export function ApplicationReview({
             applicationId={id}
             questions={questions}
             editable={editable}
-            onDirtyChange={setHasUnsavedAnswers}
+            onDirtyChange={setUnsavedQuestions}
           />
         </CardContent>
       </Card>

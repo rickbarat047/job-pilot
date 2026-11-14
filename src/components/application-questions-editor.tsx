@@ -63,6 +63,7 @@ export function ApplicationQuestionsEditor({ applicationId, questions, editable,
               id={`answer-${question.id}`}
               className="mt-2 min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={answers[question.id] ?? ""}
+              disabled={saving}
               onChange={(event) => updateAnswer(question.id, event.target.value)}
               maxLength={10000}
               placeholder="Add or edit your answer"

@@ -87,10 +87,15 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             state={data.application.state}
             method={data.job.method}
             questions={data.questions}
+            materials={{
+              summary: typeof data.resume?.content.summary === "string" ? data.resume.content.summary : "",
+              coverLetterText: typeof data.coverLetter?.content.text === "string" ? data.coverLetter.content.text : "",
+              ...(data.email?.status === "draft" ? { emailSubject: data.email.subject, emailBody: data.email.body, emailTo: data.email.to } : {}),
+            }}
           />
 
           <Card>
-            <CardHeader><CardTitle>Generated materials</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Download generated files</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {data.documents.map((doc) => (
                 <a key={doc.id} href={`/api/documents/${doc.path}`} target="_blank" rel="noreferrer" className="block rounded-xl border border-border p-3 text-sm transition-colors hover:bg-muted/40">
