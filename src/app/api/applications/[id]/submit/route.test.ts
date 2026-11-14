@@ -84,4 +84,59 @@ describe("browser application submission", () => {
     expect(database.run).toHaveBeenCalledOnce();
     expect(mocks.run).not.toHaveBeenCalled();
   });
+
+  it("claims an approved application before sending email and records the result", async () => {
+    mocks.getApplicationDetail.mockResolvedValue({
+      application: { id: "app_1", state: "Approved", jobId: "job_1", method: "email" },
+      job: { method: "email", status: "active", applicationUrl: "https://example.com/apply" },
+      email: { to: "jobs@example.com", subject: "Application", body: "Approved draft" },
+      documents: [],
+      questions: [],
+    });
+    mocks.sendApplicationEmail.mockResolvedValue({ ok: true, status: "sent", messageId: "mail_1" });
+
+    const response = await POST(request({}), context);
+    expect(response.status).toBe(200);
+    expect(mocks.transaction).toHaveBeenCalledTimes(2);
+    expect(mocks.transaction.mock.invocationCallOrder[0]).toBeLessThan(mocks.sendApplicationEmail.mock.invocationCallOrder[0]);
+    expect(mocks.sendApplicationEmail).toHaveBeenCalledOnce();
+    expect(database.run).toHaveBeenCalledTimes(4);
+    expect(database.run.mock.calls[0][0]).toContain("state='Applying'");
+    expect(database.run.mock.calls[1][0]).toContain("application.email_sending");
+    expect(database.run.mock.calls[2][0]).toContain("state='Applied'");
+    expect(database.run.mock.calls[3][0]).toContain("application.submitted_email");
+  });
+
+  it("does not send duplicate email if another request already claimed the application", async () => {
+    mocks.getApplicationDetail.mockResolvedValue({
+      application: { id: "app_1", state: "Approved", jobId: "job_1", method: "email" },
+      job: { method: "email", status: "active", applicationUrl: "https://example.com/apply" },
+      email: { to: "jobs@example.com", subject: "Application", body: "Approved draft" },
+      documents: [],
+      questions: [],
+    });
+    mocks.affectedRows.mockReturnValue(0);
+
+    const response = await POST(request({}), context);
+    expect(response.status).toBe(409);
+    expect(mocks.sendApplicationEmail).not.toHaveBeenCalled();
+    expect(database.run).toHaveBeenCalledOnce();
+  });
+
+  it("records a definite email failure and tells the page to refresh its status", async () => {
+    mocks.getApplicationDetail.mockResolvedValue({
+      application: { id: "app_1", state: "Approved", jobId: "job_1", method: "email" },
+      job: { method: "email", status: "active", applicationUrl: "https://example.com/apply" },
+      email: { to: "jobs@example.com", subject: "Application", body: "Approved draft" },
+      documents: [],
+      questions: [],
+    });
+    mocks.sendApplicationEmail.mockResolvedValue({ ok: false, status: "failed", error: "Provider rejected the message." });
+
+    const response = await POST(request({}), context);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ state: "Application Failed", error: "Provider rejected the message." });
+    expect(mocks.transaction).toHaveBeenCalledTimes(2);
+    expect(database.run.mock.calls[2][0]).toContain("state='Application Failed'");
+  });
 });

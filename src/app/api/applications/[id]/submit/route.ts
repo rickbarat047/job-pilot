@@ -35,6 +35,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (method === "email") {
       assertPermission(permissions, "send_recruiter_email");
       if (!detail.email?.to) return NextResponse.json({ error: "No recruiter email is available for this application." }, { status: 400 });
+      const claimed = await transaction(async (db) => {
+        const updated = await db.run(
+          "UPDATE applications SET state='Applying', application_method='email', last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Approved'",
+          [now, now, id, user.id],
+        );
+        if (affectedRows(updated) !== 1) return false;
+        await db.run(
+          "INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.email_sending', 'Approved', 'Applying', '{}', ?)",
+          [newId("evt"), id, user.id, now],
+        );
+        return true;
+      });
+      if (!claimed) return NextResponse.json({ error: "This application is already being processed. Refresh before trying again." }, { status: 409 });
+
       const attachments = detail.documents
         .filter((doc) => doc.kind === "resume" || doc.kind === "cover_letter")
         .map((doc) => ({ filename: doc.filename, path: doc.path }));
@@ -48,13 +62,25 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         demoMode: permissions.demoMode,
       });
       if (result.ok) {
-        await run("UPDATE applications SET state='Applied', applied_at=?, last_event_at=?, updated_at=? WHERE id=? AND user_id=?", [now, now, now, id, user.id]);
-        await run("INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.submitted_email', 'Approved', 'Applied', ?, ?)", [newId("evt"), id, user.id, JSON.stringify({ messageId: result.messageId }), now]);
+        const sentAt = nowIso();
+        const recorded = await transaction(async (db) => {
+          const updated = await db.run("UPDATE applications SET state='Applied', applied_at=?, last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Applying' AND application_method='email'", [sentAt, sentAt, sentAt, id, user.id]);
+          if (affectedRows(updated) !== 1) return false;
+          await db.run("INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.submitted_email', 'Applying', 'Applied', ?, ?)", [newId("evt"), id, user.id, JSON.stringify({ messageId: result.messageId }), sentAt]);
+          return true;
+        });
+        if (!recorded) return NextResponse.json({ ok: false, error: "The email was sent, but its status changed before JobPilot could record it. Check your sent folder before taking another action." }, { status: 409 });
         return NextResponse.json({ ok: true, state: "Applied", method: "email" });
       }
-      await run("UPDATE applications SET state='Application Failed', last_event_at=?, updated_at=? WHERE id=? AND user_id=?", [now, now, id, user.id]);
-      await run("INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.failed', 'Approved', 'Application Failed', ?, ?)", [newId("evt"), id, user.id, JSON.stringify({ error: result.error, status: result.status }), now]);
-      return NextResponse.json({ ok: false, error: result.error, status: result.status }, { status: 400 });
+      const failedAt = nowIso();
+      const failureRecorded = await transaction(async (db) => {
+        const updated = await db.run("UPDATE applications SET state='Application Failed', last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Applying' AND application_method='email'", [failedAt, failedAt, id, user.id]);
+        if (affectedRows(updated) !== 1) return false;
+        await db.run("INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.failed', 'Applying', 'Application Failed', ?, ?)", [newId("evt"), id, user.id, JSON.stringify({ error: result.error, status: result.status }), failedAt]);
+        return true;
+      });
+      if (!failureRecorded) return NextResponse.json({ ok: false, error: "Email delivery failed, but the application status changed before JobPilot could record it. Refresh and check the timeline." }, { status: 409 });
+      return NextResponse.json({ ok: false, state: "Application Failed", error: result.error, status: result.status }, { status: 400 });
     }
 
     if (method === "browser") {

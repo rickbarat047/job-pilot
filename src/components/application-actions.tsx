@@ -41,6 +41,7 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
       if (!response.ok) {
         setMessage(data.error || "Action failed.");
         toast.error(data.error || "Action failed.");
+        if (data.state) router.refresh();
         return;
       }
       if (data.requiresManual && data.applicationUrl) {
@@ -69,12 +70,13 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
       const error = "Could not reach JobPilot. Check your connection; confirm the application status before retrying.";
       setMessage(error);
       toast.error(error);
+      router.refresh();
     } finally {
       setLoading("");
     }
   }
 
-  const canConfirm = state === "Approved" || state === "Applying";
+  const canConfirm = state === "Approved" || (state === "Applying" && method !== "email");
   const browserUnavailable = workerOnline === false;
   const browserSupported = supportedAtsForUrl(applicationUrl) !== null;
 
@@ -123,14 +125,24 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
 
       {state === "Applying" && (
         <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
-          <div className="font-medium">Browser automation is working</div>
-          <p className="mt-1 text-xs text-muted-foreground">Status refreshes automatically while the worker runs. If you complete the form yourself, confirm it below.</p>
+          <div className="font-medium">{method === "email" ? "Sending application email" : "Browser automation is working"}</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {method === "email"
+              ? "If the status does not update, check with your email provider before confirming delivery. Do not resend unless you can verify the first message was not delivered."
+              : "Status refreshes automatically while the worker runs. If you complete the form yourself, confirm it below."}
+          </p>
         </div>
       )}
 
       {canConfirm && (
         <Button className="w-full" variant="outline" onClick={() => run("confirm-applied", { note: "Manual submission confirmed" })} disabled={!!loading}>
           I applied manually
+        </Button>
+      )}
+
+      {state === "Applying" && method === "email" && (
+        <Button className="w-full" variant="outline" onClick={() => run("confirm-applied", { note: "Email delivery verified by user" })} disabled={!!loading}>
+          I verified the email was delivered
         </Button>
       )}
 
