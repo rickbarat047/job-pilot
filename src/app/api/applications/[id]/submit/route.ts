@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth";
 import { getApplicationDetail, getPermissionsForUser } from "@/lib/repositories";
 import { assertPermission } from "@/lib/permissions";
-import { canTransition } from "@/lib/permissions";
-import { getDb, newId, nowIso, run, get } from "@/lib/db";
+import { affectedRows, newId, nowIso, run, transaction } from "@/lib/db";
 import { sendApplicationEmail } from "@/lib/email";
-import { enqueueTask, workerIsOnline } from "@/lib/automation";
-import { relativeStoragePath } from "@/lib/storage";
+import { workerIsOnline } from "@/lib/automation";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { supportedAtsForUrl } from "@/lib/ats-safety";
 import { isActiveForAutomatedApplication } from "@/lib/job-verification";
@@ -73,9 +71,25 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (!await workerIsOnline()) {
         return NextResponse.json({ ok: false, error: "Browser automation worker is offline. Open the official application page and complete it manually.", fallback: "manual" }, { status: 503 });
       }
-      const taskId = await enqueueTask(user.id, "browser-apply", { applicationId: id, jobId: detail.application.jobId, submit: true }, 2);
-      await run("UPDATE applications SET state='Applying', application_method='browser', last_event_at=?, updated_at=? WHERE id=? AND user_id=?", [now, now, id, user.id]);
-      await run("INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.browser_queued', 'Approved', 'Applying', ?, ?)", [newId("evt"), id, user.id, JSON.stringify({ taskId }), now]);
+      const taskId = newId("tsk");
+      const queued = await transaction(async (db) => {
+        const updated = await db.run(
+          "UPDATE applications SET state='Applying', application_method='browser', last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Approved'",
+          [now, now, id, user.id],
+        );
+        if (affectedRows(updated) !== 1) return false;
+        await db.run(
+          `INSERT INTO automation_tasks (id, user_id, type, status, priority, payload, next_run_at, created_at, updated_at)
+           VALUES (?, ?, 'browser-apply', 'queued', 2, ?, ?, ?, ?)`,
+          [taskId, user.id, JSON.stringify({ applicationId: id, jobId: detail.application.jobId, submit: true }), now, now, now],
+        );
+        await db.run(
+          "INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at) VALUES (?, ?, ?, 'application.browser_queued', 'Approved', 'Applying', ?, ?)",
+          [newId("evt"), id, user.id, JSON.stringify({ taskId }), now],
+        );
+        return true;
+      });
+      if (!queued) return NextResponse.json({ error: "This application is already being processed. Refresh to see its current status." }, { status: 409 });
       return NextResponse.json({ ok: true, state: "Applying", method: "browser", taskId });
     }
 
