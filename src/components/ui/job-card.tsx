@@ -14,6 +14,7 @@ export interface JobCardData {
   employmentType: string;
   salaryText?: string | null;
   source: string;
+  postedAt?: string | null;
   description?: string | null;
   overallScore?: number | null;
 }
@@ -72,6 +73,11 @@ export function JobCard({ job, score, action }: { job: JobCardData; score?: numb
               </Badge>
             ))}
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {job.postedAt && Number.isFinite(Date.parse(job.postedAt))
+              ? `Posted ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(job.postedAt))}`
+              : "Posting date not provided by source"}
+          </p>
         </div>
         {typeof score === "number" ? (
           <div className="flex shrink-0 flex-col items-end gap-1">

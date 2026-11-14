@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-export function ApplicationActions({ id, state, method }: { id: string; state: string; method: string }) {
+export function ApplicationActions({ id, state, method, approvalDisabled = false }: { id: string; state: string; method: string; approvalDisabled?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState("");
   const [message, setMessage] = useState("");
@@ -62,8 +62,9 @@ export function ApplicationActions({ id, state, method }: { id: string; state: s
   return (
     <div className="space-y-2">
       {(state === "Draft Ready" || state === "Awaiting Approval") && (
-        <Button className="w-full" onClick={() => run("approve")} disabled={!!loading}>Approve application</Button>
+        <Button className="w-full" onClick={() => run("approve")} disabled={!!loading || approvalDisabled}>Approve application</Button>
       )}
+      {(state === "Draft Ready" || state === "Awaiting Approval") && approvalDisabled ? <p className="text-xs text-muted-foreground">Save your answer edits before approving this application.</p> : null}
 
       {state === "Approved" && (
         <>

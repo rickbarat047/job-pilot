@@ -68,13 +68,11 @@ interface JobicyResponse {
   jobs?: JobicyJob[];
 }
 
-function eligibleRemoteLocation(location: string): boolean {
+export function eligibleRemoteLocation(location: string): boolean {
   const lower = (location || "").toLowerCase();
-  if (!lower) return true;
   if (/india/.test(lower)) return true;
-  if (/worldwide|anywhere|global|remote/.test(lower)) return true;
-  if (/usa|united states|uk|canada|europe|australia|germany|france/.test(lower) && !/remote/.test(lower)) return false;
-  return true;
+  if (/worldwide|anywhere|global|world-wide|all countries/.test(lower)) return true;
+  return false;
 }
 
 export const remoteBoardsAdapter: JobSourceAdapter = {
@@ -95,7 +93,7 @@ export const remoteBoardsAdapter: JobSourceAdapter = {
 
     try {
       const data = await fetchJson<RemotiveResponse>("https://remotive.com/api/remote-jobs?limit=100", { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-      for (const job of (data.jobs ?? []).slice(0, 20)) {
+      for (const job of data.jobs ?? []) {
         if (!eligibleRemoteLocation(job.candidate_required_location ?? "")) { skipped++; continue; }
         jobs.push(
           buildNormalizedJob({
@@ -122,10 +120,10 @@ export const remoteBoardsAdapter: JobSourceAdapter = {
 
     try {
       const data = await fetchJson<HimalayasResponse>("https://himalayas.app/jobs/api?limit=100", { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-      for (const job of (data.jobs ?? []).slice(0, 20)) {
+      for (const job of data.jobs ?? []) {
         const restrictions = job.locationRestrictions ?? [];
-        const locationText = restrictions.length ? restrictions.join(", ") : "Remote";
-        if (restrictions.length && !restrictions.some((r) => /india/i.test(r)) && !restrictions.some((r) => /worldwide|anywhere|global/i.test(r))) {
+        const locationText = restrictions.length ? restrictions.join(", ") : "Remote — eligibility not stated";
+        if (!eligibleRemoteLocation(restrictions.join(", "))) {
           skipped++;
           continue;
         }
@@ -155,7 +153,7 @@ export const remoteBoardsAdapter: JobSourceAdapter = {
 
     try {
       const data = await fetchJson<JobicyResponse>("https://jobicy.com/api/v2/remote-jobs?count=50", { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-      for (const job of (data.jobs ?? []).slice(0, 20)) {
+      for (const job of data.jobs ?? []) {
         if (!eligibleRemoteLocation(job.jobGeo ?? "")) { skipped++; continue; }
         const salaryText = job.salaryMin && job.salaryMax ? `${job.salaryMin}-${job.salaryMax} ${job.salaryCurrency ?? "USD"} ${job.salaryPeriod ?? "year"}` : "";
         jobs.push(

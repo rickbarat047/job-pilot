@@ -5,10 +5,9 @@ import { getDb } from "@/lib/db";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataCard } from "@/components/ui/data-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Timeline } from "@/components/ui/timeline";
-import { ApplicationActions } from "@/components/application-actions";
+import { ApplicationReview } from "@/components/application-review";
 import { cn } from "@/lib/utils";
 
 const STATE_TONE: Record<string, "default" | "secondary" | "outline" | "success" | "warning" | "destructive" | "accent" | "muted" | "info" | "violet" | "slate"> = {
@@ -83,9 +82,12 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         </div>
 
         <div className="order-1 space-y-4 lg:order-2">
-          <DataCard title="Actions" description="Everything stays under your approval.">
-            <ApplicationActions id={data.application.id} state={data.application.state} method={data.job.method} />
-          </DataCard>
+          <ApplicationReview
+            id={data.application.id}
+            state={data.application.state}
+            method={data.job.method}
+            questions={data.questions}
+          />
 
           <Card>
             <CardHeader><CardTitle>Generated materials</CardTitle></CardHeader>
@@ -107,20 +109,6 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
               {data.documents.length === 0 && !data.resume ? (
                 <p className="text-sm text-muted-foreground">No generated materials yet.</p>
               ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Application questions</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {data.questions.length === 0 ? <p className="text-sm text-muted-foreground">No questions generated.</p> : null}
-              {data.questions.map((question) => (
-                <div key={question.id} className="rounded-xl border border-border p-3 text-sm">
-                  <div className="font-medium">{question.question}</div>
-                  {question.answer ? <p className="mt-1 text-muted-foreground">{question.answer}</p> : <p className="mt-1 text-amber-700 dark:text-amber-400">Needs your input.</p>}
-                  {question.sensitive ? <StatusBadge tone="warning" className="mt-2">Sensitive — approval required</StatusBadge> : null}
-                </div>
-              ))}
             </CardContent>
           </Card>
 

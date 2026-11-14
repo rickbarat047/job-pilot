@@ -95,7 +95,7 @@ Email submission is approval-controlled. JobPilot only emails publicly listed, d
 
 ## Browser automation worker
 
-The worker is a long-running service that polls the app. It never receives database credentials or user session cookies.
+Production browser tasks currently run through the GitHub Actions workflow every 10 minutes, one task per run. The workflow sends a heartbeat while running; the dashboard can show the worker as offline between runs. It never receives database credentials or user session cookies. A persistent Render/Fly.io worker is an optional alternative, not the production worker currently configured.
 
 ```bash
 cd worker
@@ -109,9 +109,9 @@ export WORKER_TOKEN=local-worker-token
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Then check **Settings → Browser automation worker**. It should report **Online** within one poll interval.
+Then check **Settings → Browser automation worker** while the local worker is running. The GitHub Actions worker is expected to show **Offline** between scheduled runs.
 
-Deployment options are documented in [`worker/README.md`](worker/README.md):
+The current production workflow is [`.github/workflows/browser-worker.yml`](.github/workflows/browser-worker.yml). It requires `APP_URL` and `WORKER_TOKEN` GitHub Actions secrets. The alternative persistent deployment options are documented in [`worker/README.md`](worker/README.md):
 
 - **Render** — use the root `render.yaml` blueprint.
 - **Fly.io** — use `worker/fly.toml` and `fly secrets set`.

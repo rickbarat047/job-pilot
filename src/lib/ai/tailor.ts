@@ -138,8 +138,11 @@ function buildResumeSummary(profile: CandidateProfile, job: NormalizedJob): stri
   const base = profile.summary?.trim() || profile.headline?.trim();
   const skills = profile.skills.slice(0, 6).map((s) => s.name).join(", ");
   const target = job.title;
-  if (base) return `${base} Targeting the ${target} role at ${job.companyName}, with relevant strengths in ${skills || "problem solving, communication and technical aptitude"}.`;
-  return `${profile.fullName} is a ${profile.degree || "graduate"} targeting the ${target} role at ${job.companyName}, bringing ${skills || "analytical thinking, communication and willingness to learn"} and a track record of hands-on projects.`;
+  if (base) return `${base} Targeting the ${target} role at ${job.companyName}${skills ? `, with relevant strengths in ${skills}` : ""}.`;
+  const background = profile.degree ? `a ${profile.degree} graduate` : "a candidate";
+  const strengths = skills ? ` with skills in ${skills}` : "";
+  const projects = profile.projects.length > 0 ? ` with ${profile.projects.length} project${profile.projects.length === 1 ? "" : "s"} listed in the profile` : "";
+  return `${profile.fullName || "The candidate"} is ${background} targeting the ${target} role at ${job.companyName}${strengths}${projects}.`;
 }
 
 function reorderProjects(profile: CandidateProfile, job: NormalizedJob): typeof profile.projects {
@@ -262,9 +265,10 @@ function buildCoverLetter(profile: CandidateProfile, job: NormalizedJob, match: 
     "",
     `Dear Hiring Team at ${job.companyName},`,
     "",
-    `I am writing to apply for the ${job.title} position. I hold a ${profile.degree || "degree"}${profile.university ? ` from ${profile.university}` : ""} and am keen to contribute to ${job.companyName}.`,
-    `My profile aligns with this role through ${strengths || "transferable analytical, technical and communication skills"}. I have applied these skills across ${profile.projects.length + profile.experience.length + profile.internships.length} academic, project and internship experiences, and I am comfortable learning new tools quickly.`,
-    gaps ? `I am also aware that the role mentions ${gaps}; I am actively building these skills and would welcome the opportunity to discuss how I can close them on the job.` : "I would welcome the opportunity to discuss how my background can support your team.",
+    `I am writing to apply for the ${job.title} position.${profile.degree ? ` I hold a ${profile.degree}${profile.university ? ` from ${profile.university}` : ""}.` : ""} I am keen to contribute to ${job.companyName}.`,
+    strengths ? `My profile aligns with this role through ${strengths}.` : "I would welcome the opportunity to discuss how my background can support your team.",
+    profile.projects.length + profile.experience.length + profile.internships.length > 0 ? `My profile includes ${profile.projects.length + profile.experience.length + profile.internships.length} project, work or internship entries.` : "",
+    gaps ? `The role mentions ${gaps}; I would welcome the opportunity to discuss these requirements and my fit for the position.` : "",
     `I have attached my resume for your review. Thank you for considering my application.`,
     "",
     "Sincerely,",
@@ -277,7 +281,7 @@ function buildRecruiterEmail(profile: CandidateProfile, job: NormalizedJob, matc
 
 I hope you are doing well. I am writing to express my interest in the ${job.title} role at ${job.companyName}.
 
-I am a ${profile.degree || "graduate"}${profile.university ? ` from ${profile.university}` : ""} with skills in ${profile.skills.slice(0, 6).map((s) => s.name).join(", ") || "problem solving and communication"}. Based on the job description, my profile has a ${match.overallScore}% match, particularly in ${match.strengths.slice(0, 3).join(", ") || "relevant areas"}.
+I am ${profile.degree ? `a ${profile.degree} graduate` : "a candidate"}${profile.university ? ` from ${profile.university}` : ""}${profile.skills.length ? ` with skills in ${profile.skills.slice(0, 6).map((s) => s.name).join(", ")}` : ""}. I see relevant overlap with the role${match.strengths.length ? ` in ${match.strengths.slice(0, 3).join(", ")}` : ""}.
 
 I have attached my resume and would be grateful for the opportunity to discuss how I can contribute to your team. Please let me know if you need any additional information.
 
@@ -296,7 +300,7 @@ export function buildApplicationQuestions(profile: CandidateProfile, prefs: Cand
     question, answer, requiresApproval, sensitive: false,
   });
   return [
-    normal("Why are you interested in this role?", `I am interested in the ${job.title} role at ${job.companyName} because it matches my ${profile.degree || "academic"} background and my goal of building a career in ${match.roleFamily}. I am particularly drawn to the opportunity to apply ${match.strengths.slice(0, 3).join(", ") || "my technical and analytical skills"} in a real business setting.`, false),
+    normal("Why are you interested in this role?", `I am interested in the ${job.title} role at ${job.companyName} because it focuses on ${match.roleFamily || job.title}${match.strengths.length ? `, including areas related to my listed strengths in ${match.strengths.slice(0, 3).join(", ")}` : ""}. I would welcome the opportunity to learn more about the work and how my background could contribute.`, false),
     normal(
       "What relevant experience do you bring?",
       (() => {
@@ -304,18 +308,19 @@ export function buildApplicationQuestions(profile: CandidateProfile, prefs: Cand
         const skills = profile.skills.slice(0, 8).map((skill) => skill.name).filter(Boolean).join(", ");
         const experienceLabel = experienceCount === 1 ? "1 experience entry" : `${experienceCount} experience entries`;
         const projectLabel = profile.projects.length === 1 ? "1 project" : `${profile.projects.length} projects`;
+        const projectVerb = profile.projects.length === 1 ? "is" : "are";
         const summary = experienceCount === 0
-          ? `I am a fresher with ${projectLabel} listed in my resume.`
-          : `${experienceLabel} and ${projectLabel} are listed in my resume.`;
+          ? `${projectLabel} ${projectVerb} listed in my profile; no work or internship entries are listed.`
+          : `${experienceLabel} and ${projectLabel} are listed in my profile.`;
         return `${summary}${skills ? ` Key areas include ${skills}.` : ""}`;
       })(),
       false,
     ),
     normal("What are your strongest skills for this role?", match.strengths.join(", ") || profile.skills.slice(0, 6).map((skill) => skill.name).filter(Boolean).join(", "), false),
-    normal("What is your notice period or availability?", profile.noticePeriod ? `My current notice period is ${profile.noticePeriod}.` : "I am available to join immediately / as per standard notice.", false),
-    normal("What are your salary expectations?", prefs.salaryFlexible ? "I am flexible and open to discussing a fair offer based on the role and market standards." : (prefs.minSalaryLpa ? `I am looking for around ₹${prefs.minSalaryLpa} LPA, but I am open to discussion.` : "Open to discussion based on the role.")),
-    normal("Are you willing to relocate?", prefs.flexibility?.willingToRelocate ? "Yes, I am open to relocating for the right opportunity." : "I prefer my current location but can discuss relocation if required."),
-    normal("Are you willing to work remotely or in a hybrid model?", prefs.flexibility?.willingToRemote ? "Yes, I am comfortable with remote and hybrid work." : "I prefer on-site work but can adapt."),
+    normal("What is your notice period or availability?", profile.noticePeriod ? `My current notice period is ${profile.noticePeriod}.` : "", !profile.noticePeriod),
+    normal("What are your salary expectations?", prefs.salaryFlexible ? "I am flexible and open to discussing a fair offer based on the role and market standards." : (prefs.minSalaryLpa ? `I am looking for around ₹${prefs.minSalaryLpa} LPA, but I am open to discussion.` : ""), !prefs.salaryFlexible && !prefs.minSalaryLpa),
+    normal("Are you willing to relocate?", prefs.flexibility?.willingToRelocate ? "Yes, I am open to relocating for the right opportunity." : "", !prefs.flexibility?.willingToRelocate),
+    normal("Are you willing to work remotely or in a hybrid model?", prefs.flexibility?.willingToRemote ? "Yes, I am comfortable with remote and hybrid work." : "", !prefs.flexibility?.willingToRemote),
     sensitive("Please share any gender, age, disability, veteran or demographic information requested by the employer."),
     sensitive("Do you agree to the employer's background check, data processing and declaration statements?"),
   ];

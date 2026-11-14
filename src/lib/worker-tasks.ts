@@ -149,11 +149,11 @@ export async function getWorkerTaskPayload(taskId: string, baseUrl: string) {
       downloadUrl: `${origin}/api/automation/worker/documents/${encodeURIComponent(doc.id)}?taskId=${encodeURIComponent(String(task.id))}`,
     })),
     answers: detail.questions
-      .filter((question) => question.answer && question.answer.trim())
+      .filter((question) => question.answer && question.answer.trim() && !question.sensitive && !question.requiresApproval)
       .map((question) => ({
         question: question.question,
         answer: question.answer,
-        sensitive: Boolean(question.sensitive || question.requiresApproval),
+        sensitive: false,
       })),
     submit: payload.submit !== false,
     demoMode: false,

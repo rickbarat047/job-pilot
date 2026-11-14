@@ -163,7 +163,7 @@ export default function AutomationPage() {
             <div key={run.id} className="rounded-2xl border border-border bg-background/40 p-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{run.trigger} run</span>
-                <Badge variant={run.status === "succeeded" ? "success" : "destructive"}>{run.status}</Badge>
+                <Badge variant={run.status === "succeeded" ? "success" : run.status === "partial" ? "warning" : "destructive"}>{run.status}</Badge>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
                 {run.startedAt ? new Date(run.startedAt).toLocaleString() : "—"} · {run.finishedAt ? `finished ${new Date(run.finishedAt).toLocaleString()}` : "running"}

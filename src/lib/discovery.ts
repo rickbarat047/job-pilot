@@ -7,6 +7,7 @@ import { enabledAdapters } from "./sources";
 import { createNotification } from "./repositories";
 import type { NormalizedJob, SourceFetchResult } from "./types";
 import { evaluatePermission } from "./permissions";
+import { discoveryRunStatus } from "./discovery-status";
 
 interface UpsertJobResult { id: string; isNew: boolean; }
 
@@ -189,13 +190,14 @@ export async function runDiscovery(userId: string, options: DiscoveryOptions = {
     }
   }
 
+  const runStatus = discoveryRunStatus(sourceResults);
   await run(
-    "UPDATE automation_runs SET status='succeeded', summary=?, finished_at=? WHERE id=?",
-    [JSON.stringify({ fetched: allJobs.length, inserted, duplicates: deduped.duplicates.length, matched, newHighMatches, errors: errors.length }), nowIso(), runId],
+    "UPDATE automation_runs SET status=?, summary=?, finished_at=? WHERE id=?",
+    [runStatus, JSON.stringify({ fetched: allJobs.length, inserted, duplicates: deduped.duplicates.length, matched, newHighMatches, errors: errors.length }), nowIso(), runId],
   );
   await run(
-    "INSERT INTO automation_logs (id, user_id, run_id, level, message, meta, created_at) VALUES (?, ?, ?, 'info', ?, ?, ?)",
-    [newId("log"), userId, runId, `Discovery completed: ${allJobs.length} fetched, ${inserted} new, ${matched} matched.`, JSON.stringify({ errors }), nowIso()],
+    "INSERT INTO automation_logs (id, user_id, run_id, level, message, meta, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [newId("log"), userId, runId, runStatus === "succeeded" ? "info" : "warn", `Discovery ${runStatus}: ${allJobs.length} fetched, ${inserted} new, ${matched} matched.`, JSON.stringify({ errors }), nowIso()],
   );
 
   return {

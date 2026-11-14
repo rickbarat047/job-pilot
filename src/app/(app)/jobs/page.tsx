@@ -11,7 +11,7 @@ import { JobCard } from "@/components/ui/job-card";
 import { cn } from "@/lib/utils";
 
 interface JobItem {
-  job: { id: string; title: string; companyName: string; location: string; remoteStatus: string; employmentType: string; salaryText?: string | null; source: string };
+  job: { id: string; title: string; companyName: string; location: string; remoteStatus: string; employmentType: string; salaryText?: string | null; source: string; postedAt?: string | null };
   match: { overallScore: number; recommendedAction: string; strengths: string[] };
   savedState: string | null;
   applicationId: string | null;
@@ -271,6 +271,7 @@ export default function JobsPage() {
                   employmentType: item.job.employmentType,
                   salaryText: item.job.salaryText,
                   source: item.job.source,
+                  postedAt: item.job.postedAt,
                   description: null,
                 }}
                 score={item.match.overallScore}

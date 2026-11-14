@@ -89,10 +89,10 @@ describe("application question drafts", () => {
     }
   });
 
-  it("describes a fresher accurately using only profile facts", () => {
+  it("describes work and project entries accurately using only profile facts", () => {
     const questions = buildApplicationQuestions(profile, preferences, job, match);
     const answer = questions.find((question) => question.question === "What relevant experience do you bring?")?.answer ?? "";
-    expect(answer).toContain("fresher");
+    expect(answer).toContain("no work or internship entries are listed");
     expect(answer).toContain("2 projects");
     expect(answer).toContain("Automotive Engineering");
     expect(answer).toContain("CAD");
@@ -118,6 +118,26 @@ describe("application question drafts", () => {
     for (const question of sensitive) {
       expect(question.requiresApproval).toBe(true);
       expect(question.answer).toBe("");
+    }
+  });
+
+  it("does not invent availability, salary, relocation or remote-work preferences", () => {
+    const unknownPreferences: CandidatePreferences = {
+      ...preferences,
+      salaryFlexible: false,
+      minSalaryLpa: null,
+      flexibility: { ...preferences.flexibility!, willingToRelocate: false, willingToRemote: false },
+    };
+    const questions = buildApplicationQuestions({ ...profile, noticePeriod: "" }, unknownPreferences, job, match);
+    for (const label of [
+      "What is your notice period or availability?",
+      "What are your salary expectations?",
+      "Are you willing to relocate?",
+      "Are you willing to work remotely or in a hybrid model?",
+    ]) {
+      const question = questions.find((item) => item.question === label);
+      expect(question?.answer).toBe("");
+      expect(question?.requiresApproval).toBe(true);
     }
   });
 });

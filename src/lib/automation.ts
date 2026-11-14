@@ -2,6 +2,7 @@ import { all, get, newId, nowIso, parseJson, run } from "./db";
 import { runDiscovery } from "./discovery";
 import { createNotification, getPermissionsForUser } from "./repositories";
 import { evaluatePermission } from "./permissions";
+import { isDefinitivelyClosedPostingStatus } from "./job-verification";
 import { checkCompanyCareerPage } from "./companies/check";
 
 type Row = Record<string, unknown>;
@@ -73,9 +74,11 @@ async function runTask(userId: string, type: string, payload: Record<string, unk
       for (const job of jobs) {
         try {
           const response = await fetch(job.application_url, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
-          await run("UPDATE jobs SET last_verified_at=?, status=? WHERE id=?", [nowIso(), response.status >= 400 ? "expired" : "active", job.id]);
+          if (response.ok || isDefinitivelyClosedPostingStatus(response.status)) {
+            await run("UPDATE jobs SET last_verified_at=?, status=? WHERE id=?", [nowIso(), isDefinitivelyClosedPostingStatus(response.status) ? "expired" : "active", job.id]);
+          }
         } catch {
-          await run("UPDATE jobs SET last_verified_at=? WHERE id=?", [nowIso(), job.id]);
+          // A timeout or network failure is not evidence that the posting closed.
         }
       }
       break;

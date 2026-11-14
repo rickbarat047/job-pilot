@@ -287,7 +287,7 @@ export async function getJobsForUser(userId: string, filters: JobFilters = {}): 
   if (filters.saved) where.push("s.id IS NOT NULL");
   if (filters.shortlisted) where.push("s.state = 'shortlisted'");
   if (filters.applied) where.push("a.id IS NOT NULL");
-  const order = filters.sort === "newest" ? "j.posted_at DESC" : filters.sort === "salary" ? "j.salary_max DESC NULLS LAST, m.overall_score DESC" : "m.overall_score DESC, j.posted_at DESC";
+  const order = filters.sort === "newest" ? "j.posted_at DESC NULLS LAST" : filters.sort === "salary" ? "j.salary_max DESC NULLS LAST, m.overall_score DESC" : "m.overall_score DESC, j.posted_at DESC NULLS LAST";
   const page = Math.max(1, filters.page ?? 1);
   const limit = Math.min(100, Math.max(1, filters.limit ?? 24));
   const base = `FROM jobs j JOIN job_matches m ON m.job_id = j.id

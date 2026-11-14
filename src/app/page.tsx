@@ -14,18 +14,18 @@ const navLinks = [
 ];
 
 const trustPoints = [
-  { icon: ShieldCheck, title: "Approval-first applications", body: "Nothing is submitted until you review and approve it." },
+  { icon: ShieldCheck, title: "You control application automation", body: "Choose whether each application needs your review before it is submitted." },
   { icon: FileText, title: "Honest CV-based matching", body: "Scores come from your real CV. Nothing is invented or inflated." },
   { icon: Eye, title: "No fabricated experience", body: "JobPilot never adds qualifications, dates or skills you don't have." },
-  { icon: Building2, title: "Relevant opportunities across India", body: "Trusted employers and boards — engineering to operations." },
+  { icon: Building2, title: "India-focused job discovery", body: "Search supported public employer boards and selected remote boards. Coverage does not include every job site." },
   { icon: Lock, title: "User-controlled activity", body: "You decide what the agent does, and can stop it at any time." },
 ];
 
 const steps = [
   { title: "Upload your CV", body: "We extract your real skills, experience and education — never rewriting your history." },
-  { title: "Discover relevant opportunities", body: "Live vacancies across India are scanned and scored against your actual profile." },
+  { title: "Discover relevant opportunities", body: "JobPilot checks supported public boards and scores current listings against your profile. It does not search every job site." },
   { title: "Prepare tailored applications", body: "Resume, cover letter and recruiter notes drafted for each specific role." },
-  { title: "Review and approve applications", body: "Nothing sends itself. You approve, edit, or skip every single submission." },
+  { title: "Review or automate applications", body: "Review and edit applications yourself, or enable a higher automation setting in your preferences." },
 ];
 
 /* Illustrative preview content — clearly labeled, never mixed with real product data. */
@@ -74,7 +74,7 @@ function MatchRow({ item }: { item: (typeof previewMatches)[number] }) {
 }
 
 const capabilities = [
-  { icon: Search, title: "AI job discovery", body: "Broad, continuous searches across engineering, IT, business, support, operations and non-core roles — scored as they land.", featured: true },
+  { icon: Search, title: "Job discovery", body: "Search selected public employer boards and remote boards, then match listings to your location, experience and preferences.", featured: true },
   { icon: Target, title: "Smart career matching", body: "Explainable scores built from skills, experience, education, location and preferences." },
   { icon: PenLine, title: "Resume customization", body: "ATS-friendly tailored resumes — grounded in your real CV, never embellished." },
   { icon: FileText, title: "Cover letter generation", body: "Role-specific cover letters drafted from your profile for every application." },
@@ -102,8 +102,8 @@ export default function LandingPage() {
               <span className="text-primary">Already in motion.</span>
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-              Discover relevant jobs across India, create tailored applications, and manage your entire
-              job search with an intelligent career assistant that keeps you in control.
+              Find relevant roles from supported job boards, create materials grounded in your real CV,
+              and keep your application progress in one place.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href="/register" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-medium text-primary-foreground shadow-[0_14px_32px_-14px_color-mix(in_srgb,var(--primary)_60%,transparent)] transition-all hover:bg-primary/90 active:scale-[0.98] sm:w-auto">

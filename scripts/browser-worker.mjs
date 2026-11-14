@@ -409,8 +409,6 @@ async function executeTask(taskPayload) {
         'button:has-text("Submit")',
         'button:has-text("Apply")',
         'button:has-text("Send")',
-        'button:has-text("Continue")',
-        'button:has-text("Next")',
       ];
       let clicked = false;
       for (const sel of btnSelectors) {
@@ -428,15 +426,16 @@ async function executeTask(taskPayload) {
       }
       await page.waitForTimeout(3000);
       finalUrl = page.url();
-      const successText = await page.locator("text=/thank you|application received|submitted|success|we.?ve received/i").count();
-      if (successText > 0) {
+      const visiblePageText = await page.locator("body").innerText().catch(() => "");
+      const confirmed = /thank you for applying|application (has been )?received|application submitted successfully|we have received your application|we've received your application/i.test(visiblePageText);
+      if (confirmed) {
         return { status: "applied", message: `Application submitted via ${ats} adapter.`, finalUrl, fieldsFilled, screenshotPath };
       }
-      const errorText = await page.locator("text=/required|invalid|error|please fill/i").count();
-      if (errorText > 0) {
+      const validationError = /required field|invalid (email|phone|answer|input)|please fill (in )?the required/i.test(visiblePageText);
+      if (validationError) {
         return { status: "manual_required", message: `${ats} adapter submitted but validation errors detected; manual review required.`, finalUrl, fieldsFilled, screenshotPath };
       }
-      return { status: "applied", message: `Submit clicked via ${ats} adapter; assumed success.`, finalUrl, fieldsFilled, screenshotPath };
+      return { status: "manual_required", message: `The form was submitted, but the employer did not show a clear confirmation. Check the employer page or your email before marking this application as submitted.`, finalUrl, fieldsFilled, screenshotPath };
     }
 
     return { status: "manual_required", message: `submit=false; form prepared via ${ats} adapter for manual completion.`, finalUrl, fieldsFilled, screenshotPath };

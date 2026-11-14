@@ -32,6 +32,12 @@ export const COMPANY_REGISTRY: CompanyRegistryEntry[] = [
     ats: { type: "greenhouse", identifier: "groww" }, verified: true, tags: ["fintech", "consumer", "bengaluru"],
   },
   {
+    name: "InMobi", slug: "inmobi", website: "https://www.inmobi.com", careersUrl: "https://www.inmobi.com/company/careers",
+    industry: "Advertising Technology", location: "Bengaluru, India", size: "1,001–5,000", stage: "Public",
+    description: "Mobile advertising and marketing technology company with an India-based engineering and commercial presence.",
+    ats: { type: "greenhouse", identifier: "inmobi" }, verified: true, tags: ["adtech", "software", "bengaluru", "mumbai"],
+  },
+  {
     name: "Meesho", slug: "meesho", website: "https://www.meesho.io", careersUrl: "https://www.meesho.io/jobs",
     industry: "E-commerce", location: "Bengaluru, India", size: "1,001–5,000", stage: "Late stage",
     description: "Democratising internet commerce for Bharat; social commerce and logistics at scale.",
