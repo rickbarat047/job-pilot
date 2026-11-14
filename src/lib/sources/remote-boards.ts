@@ -1,5 +1,5 @@
 import type { JobSourceAdapter, NormalizedJob, SourceFetchContext, SourceFetchResult } from "../types";
-import { buildNormalizedJob } from "../normalize";
+import { buildNormalizedJob, isIndiaEligibleRemote } from "../normalize";
 import { fetchJson } from "./http";
 
 interface RemotiveJob {
@@ -70,9 +70,8 @@ interface JobicyResponse {
 
 export function eligibleRemoteLocation(location: string): boolean {
   const lower = (location || "").toLowerCase();
-  if (/india/.test(lower)) return true;
-  if (/worldwide|anywhere|global|world-wide|all countries/.test(lower)) return true;
-  return false;
+  if (isIndiaEligibleRemote(location)) return true;
+  return /^(?:remote\s*[—-]?\s*)?anywhere$/.test(lower.trim()) || /\bworld-wide\b|\bglobal(?:ly)?\b/.test(lower);
 }
 
 export const remoteBoardsAdapter: JobSourceAdapter = {
@@ -136,7 +135,7 @@ export const remoteBoardsAdapter: JobSourceAdapter = {
             companyName: job.companyName,
             descriptionHtml: job.description ?? job.excerpt ?? "",
             location: locationText,
-            workplaceType: restrictions.length ? "Hybrid" : "Remote",
+            workplaceType: "Remote",
             employmentType: job.employmentType ?? "",
             salaryText,
             applicationUrl: job.applicationLink || "https://himalayas.app/jobs",

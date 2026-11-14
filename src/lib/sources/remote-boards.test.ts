@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eligibleRemoteLocation } from "./remote-boards";
+import { eligibleRemoteLocation, remoteBoardsAdapter } from "./remote-boards";
 
 describe("remote job location eligibility", () => {
   it("accepts jobs explicitly open to India or candidates worldwide", () => {
@@ -13,5 +13,29 @@ describe("remote job location eligibility", () => {
     expect(eligibleRemoteLocation("")).toBe(false);
     expect(eligibleRemoteLocation("Remote")).toBe(false);
     expect(eligibleRemoteLocation("United States, Canada" )).toBe(false);
+    expect(eligibleRemoteLocation("Remote — India not eligible")).toBe(false);
+    expect(eligibleRemoteLocation("Remote, excluding candidates from India")).toBe(false);
+  });
+
+  it("keeps India-restricted remote jobs classified as remote", async () => {
+    const result = await remoteBoardsAdapter.fetchJobs({
+      fetchImpl: async (input) => {
+        const url = String(input);
+        if (url.startsWith("https://remotive.com/")) {
+          return new Response(JSON.stringify({ jobs: [] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+        if (url.startsWith("https://himalayas.app/")) {
+          return new Response(JSON.stringify({ jobs: [
+            { title: "Remote Engineer", companyName: "Example Co", locationRestrictions: ["India"], description: "Remote role", guid: "india-remote", applicationLink: "https://example.com/apply" },
+            { title: "Remote Engineer", companyName: "Other Co", locationRestrictions: ["Remote — India not eligible"], guid: "india-excluded", applicationLink: "https://example.com/apply" },
+          ] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ jobs: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      },
+    });
+
+    expect(result.jobs).toHaveLength(1);
+    expect(result.jobs[0]).toMatchObject({ title: "Remote Engineer", country: "India", remoteStatus: "remote" });
+    expect(result.skipped).toBe(1);
   });
 });
