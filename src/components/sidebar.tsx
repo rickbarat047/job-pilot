@@ -50,7 +50,7 @@ export function Sidebar({ name, email }: { name: string; email: string }) {
         <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-[0_8px_20px_-8px_color-mix(in_srgb,var(--primary)_55%,transparent)]">J</div>
         <div>
           <div className="font-display text-lg font-semibold leading-none tracking-tight">JobPilot</div>
-          <div className="mt-1 text-xs text-muted-foreground">AI career agent</div>
+          <div className="mt-1 text-xs text-muted-foreground">Job-search assistant</div>
         </div>
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 scrollbar-thin" aria-label="Application navigation">

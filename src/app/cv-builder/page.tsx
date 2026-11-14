@@ -114,7 +114,7 @@ export default function CvBuilderPage() {
           </div>
           <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">Build an AI CV</h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Fill in your real details. JobPilot formats them into an ATS-friendly CV and never invents experience, skills or education.
+            Fill in your real details. JobPilot formats them into an ATS-friendly CV; review the generated content and correct anything that does not match your history.
           </p>
         </div>
       </section>

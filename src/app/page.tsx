@@ -15,14 +15,14 @@ const navLinks = [
 
 const trustPoints = [
   { icon: ShieldCheck, title: "You control application automation", body: "Choose whether each application needs your review before it is submitted." },
-  { icon: FileText, title: "Honest CV-based matching", body: "Scores come from your real CV. Nothing is invented or inflated." },
-  { icon: Eye, title: "No fabricated experience", body: "JobPilot never adds qualifications, dates or skills you don't have." },
+  { icon: FileText, title: "Profile-based matching", body: "Scores compare your profile with role requirements. They are relevance estimates, not predictions of hiring outcomes." },
+  { icon: Eye, title: "Drafts grounded in your profile", body: "Materials are designed to use details you provide. Review every draft before sending it." },
   { icon: Building2, title: "India-focused job discovery", body: "Search supported public employer boards and selected remote boards. Coverage does not include every job site." },
   { icon: Lock, title: "User-controlled activity", body: "You decide what the agent does, and can stop it at any time." },
 ];
 
 const steps = [
-  { title: "Upload your CV", body: "We extract your real skills, experience and education — never rewriting your history." },
+  { title: "Upload your CV", body: "We extract your skills, experience and education into a profile you can review and update." },
   { title: "Discover relevant opportunities", body: "JobPilot checks supported public boards and scores current listings against your profile. It does not search every job site." },
   { title: "Prepare tailored applications", body: "Resume, cover letter and recruiter notes drafted for each specific role." },
   { title: "Review or automate applications", body: "Review and edit applications yourself, or enable a higher automation setting in your preferences." },
@@ -98,11 +98,11 @@ export default function LandingPage() {
               Built for India&apos;s next generation of professionals
             </p>
             <h1 className="font-display text-4xl font-semibold leading-[1.06] tracking-[-0.03em] text-foreground sm:text-5xl md:text-[3.4rem]">
-              Your next opportunity.{" "}
-              <span className="text-primary">Already in motion.</span>
+              A more focused job search{" "}
+              <span className="text-primary">starts here.</span>
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-              Find relevant roles from supported job boards, create materials grounded in your real CV,
+              Find roles from supported boards, prepare materials based on your CV and profile,
               and keep your application progress in one place.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">

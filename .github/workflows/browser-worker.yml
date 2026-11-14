@@ -11,6 +11,9 @@ concurrency:
   group: browser-worker
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -22,14 +25,14 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install Playwright
-        run: |
-          npm install playwright@1.49.0
-          npx playwright install chromium --with-deps
+        run: npm install --no-save --no-package-lock playwright@1.63.0
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-1.49.0
+          key: playwright-${{ runner.os }}-1.63.0
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
       - name: Run browser worker (one task)
         env:
           APP_URL: ${{ secrets.APP_URL }}

@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "description": "JobPilot AI — autonomous AI job hunting and application platform for India",
+  "description": "JobPilot AI — a job-search assistant for candidates in India",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

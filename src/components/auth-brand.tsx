@@ -17,13 +17,13 @@ export function AuthBrandPanel() {
 
       <div className="relative max-w-sm space-y-6">
         <h2 className="font-display text-3xl font-semibold leading-[1.15] tracking-[-0.02em]">
-          Your next opportunity. Already in motion.
+          A more focused job search starts here.
         </h2>
         <ul className="space-y-3.5 text-sm text-slate-300">
           {[
-            { icon: Target, text: "Real vacancies across India, scored against your actual CV" },
-            { icon: FileText, text: "Tailored resumes and cover letters for every role" },
-            { icon: ShieldCheck, text: "Approval-first — nothing is ever submitted without you" },
+            { icon: Target, text: "Listings from supported boards, matched to your CV and preferences" },
+            { icon: FileText, text: "Application drafts based on your profile, ready for review" },
+            { icon: ShieldCheck, text: "Review is the default; higher automation is optional" },
           ].map((item) => {
             const Icon = item.icon;
             return (

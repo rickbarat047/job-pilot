@@ -107,7 +107,7 @@ export default function DashboardPage() {
         <div className="relative flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="max-w-xl">
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card/70 px-3 py-1 text-xs font-medium text-primary">
-              <Sparkles className="h-3.5 w-3.5" /> Your AI career agent
+              <Sparkles className="h-3.5 w-3.5" /> Your job-search assistant
             </div>
             <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">
               Welcome back, {firstName}.

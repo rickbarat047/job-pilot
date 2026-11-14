@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const dynamic = "force-static";
-export const alt = "JobPilot AI — Your next opportunity. Already in motion.";
+export const alt = "JobPilot AI — A more focused job search starts here.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -15,8 +15,8 @@ export default function opengraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", fontSize: 76, lineHeight: 1.05, fontWeight: 700, color: "#171b25", letterSpacing: "-2px" }}>
-            <div>Your next opportunity.</div>
-            <div style={{ color: "#087f68" }}>Already in motion.</div>
+            <div>A more focused</div>
+            <div style={{ color: "#087f68" }}>job search starts here.</div>
           </div>
           <div style={{ fontSize: 30, color: "#747d8c" }}>
             An AI career assistant for India — approval-first, CV-true, in your control.
