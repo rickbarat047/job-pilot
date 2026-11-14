@@ -13,13 +13,14 @@ export async function GET() {
     databaseOk = true;
     const aiEnabled = isAIEnabled();
     const workerOnline = await workerIsOnline();
+    const ready = aiEnabled && workerOnline;
     return NextResponse.json({
-      status: aiEnabled && workerOnline ? "ok" : "degraded",
+      status: ready ? "ok" : "degraded",
       database: "ok",
       ai: aiEnabled ? "configured" : "fallback",
       worker: workerOnline ? "online" : "offline",
       timestamp: new Date().toISOString(),
-    });
+    }, { status: ready ? 200 : 503 });
   } catch (error) {
     logger.error("Health check failed", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(

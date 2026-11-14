@@ -16,11 +16,12 @@
 - Match scores for postings with no skill evidence are capped at 60, described as uncertain, and no longer count a placeholder as a candidate strength.
 - Monthly INR salary amounts are normalized to annual LPA before salary-fit scoring; explicit LPA values remain unchanged.
 - Application approval now enforces same-origin requests and records the state transition plus audit event atomically, with a concurrent-state check.
-- Local verification: 39 test files / 201 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
+- Health readiness now returns HTTP 503 when the database, AI provider, or browser worker is unavailable, with component details in the response body.
+- Local verification: 39 test files / 204 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve
 
-1. **Worker availability:** last read-only production health check returned HTTP 200 but reported `worker: offline`. A green health status must require the worker to be reachable, and production must pass a real queued-task round trip.
+1. **Worker availability:** last read-only production health check returned HTTP 200 but reported `worker: offline`. The local health route now returns HTTP 503 for that state, but the fix is not deployed; production must pass a real queued-task round trip.
 2. **Build/deployment:** these local changes have not been built or deployed. The local Next.js build could not start because Windows denied access while SWC canonicalized the checkout path. Re-run build and browser/API smoke checks in a supported checkout or CI before release.
 3. **Production database:** migration `0005_manual_job_ownership.sql` is pending. Back up the production database and verify restore before applying it; do not deploy code relying on the new column until then.
 4. **Account deletion:** new manual imports are owner-scoped. Legacy unowned manual job rows cannot safely be attributed or removed automatically; design a scoped cleanup before claiming complete erasure of every legacy import.
