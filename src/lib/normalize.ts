@@ -231,14 +231,22 @@ export function parseSalary(text: string): { minLpa: number | null; maxLpa: numb
     return { minLpa: null, maxLpa: null, text: source.slice(0, 120), currency: /usd|\$/i.test(source) ? "USD" : null };
   }
   const cleaned = source.replace(/,/g, "").toLowerCase();
+  const isMonthly = /(?:\/\s*(?:month|mo\b)|per\s+month|monthly)/i.test(source);
+  const annualMultiplier = isMonthly ? 12 : 1;
   const lpaRange = cleaned.match(/(\d+(?:\.\d+)?)\s*(?:-|to|–)\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakhs?|l\b)/);
-  if (lpaRange) return { minLpa: Number(lpaRange[1]), maxLpa: Number(lpaRange[2]), text: source.slice(0, 120), currency: "INR" };
+  if (lpaRange) {
+    const multiplier = isMonthly && !/\blpa\b/i.test(source) ? annualMultiplier : 1;
+    return { minLpa: Number(lpaRange[1]) * multiplier, maxLpa: Number(lpaRange[2]) * multiplier, text: source.slice(0, 120), currency: "INR" };
+  }
   const lpaSingle = cleaned.match(/(\d+(?:\.\d+)?)\s*(?:lpa|lakhs?|l\b)/);
-  if (lpaSingle) return { minLpa: Number(lpaSingle[1]), maxLpa: null, text: source.slice(0, 120), currency: "INR" };
+  if (lpaSingle) {
+    const multiplier = isMonthly && !/\blpa\b/i.test(source) ? annualMultiplier : 1;
+    return { minLpa: Number(lpaSingle[1]) * multiplier, maxLpa: null, text: source.slice(0, 120), currency: "INR" };
+  }
   const rupeeRange = cleaned.match(/(?:₹|rs\.?|inr)\s*(\d{5,9})\s*(?:-|to|–)\s*(?:₹|rs\.?|inr)?\s*(\d{5,9})/);
-  if (rupeeRange) return { minLpa: Math.round(Number(rupeeRange[1]) / 100000 * 10) / 10, maxLpa: Math.round(Number(rupeeRange[2]) / 100000 * 10) / 10, text: source.slice(0, 120), currency: "INR" };
+  if (rupeeRange) return { minLpa: Math.round(Number(rupeeRange[1]) * annualMultiplier / 100000 * 10) / 10, maxLpa: Math.round(Number(rupeeRange[2]) * annualMultiplier / 100000 * 10) / 10, text: source.slice(0, 120), currency: "INR" };
   const rupeeSingle = cleaned.match(/(?:₹|rs\.?|inr)\s*(\d{5,9})/);
-  if (rupeeSingle) return { minLpa: Math.round(Number(rupeeSingle[1]) / 100000 * 10) / 10, maxLpa: null, text: source.slice(0, 120), currency: "INR" };
+  if (rupeeSingle) return { minLpa: Math.round(Number(rupeeSingle[1]) * annualMultiplier / 100000 * 10) / 10, maxLpa: null, text: source.slice(0, 120), currency: "INR" };
   return { minLpa: null, maxLpa: null, text: source.slice(0, 120), currency: "INR" };
 }
 

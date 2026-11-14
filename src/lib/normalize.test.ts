@@ -17,6 +17,19 @@ describe("normalize", () => {
     expect(result.currency).toBe("INR");
   });
 
+  it("converts monthly INR salary amounts into annual LPA for matching", () => {
+    const range = parseSalary("₹50,000-₹1,00,000 per month");
+    expect(range.minLpa).toBe(6);
+    expect(range.maxLpa).toBe(12);
+    expect(range.currency).toBe("INR");
+
+    const single = parseSalary("₹60,000/month");
+    expect(single.minLpa).toBe(7.2);
+
+    expect(parseSalary("₹1 lakh per month").minLpa).toBe(12);
+    expect(parseSalary("₹12 LPA").minLpa).toBe(12);
+  });
+
   it("strips HTML", () => {
     expect(stripHtml("<p>Hello <strong>world</strong></p>")).toBe("Hello world");
   });
