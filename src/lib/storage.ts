@@ -28,7 +28,6 @@ function supabaseStorage() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || "jobpilot";
   if (!url || !key) return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient } = require("@supabase/supabase-js");
   return { client: createClient(url, key), bucket };
 }
@@ -75,7 +74,8 @@ export async function fileExists(relativePath: string): Promise<boolean> {
 export async function deleteFile(relativePath: string): Promise<void> {
   const storage = supabaseStorage();
   if (storage) {
-    await storage.client.storage.from(storage.bucket).remove([relativePath]);
+    const { error } = await storage.client.storage.from(storage.bucket).remove([relativePath]);
+    if (error) throw new Error(error.message);
     return;
   }
   try {
@@ -83,6 +83,46 @@ export async function deleteFile(relativePath: string): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+/** Remove every uploaded or generated object belonging to an account. */
+export async function deleteUserFiles(userId: string): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(userId)) throw new Error("Invalid user storage key.");
+
+  const storage = supabaseStorage();
+  if (storage) {
+    const bucket = storage.client.storage.from(storage.bucket);
+    const prefix = `users/${userId}`;
+    const listFiles = async (folder: string): Promise<string[]> => {
+      const files: string[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await bucket.list(folder, { limit: 1000, offset, sortBy: { column: "name", order: "asc" } });
+        if (error) throw new Error(error.message);
+        const entries = data ?? [];
+        for (const entry of entries) {
+          const objectPath = `${folder}/${entry.name}`;
+          if (entry.id) files.push(objectPath);
+          else files.push(...await listFiles(objectPath));
+        }
+        if (entries.length < 1000) break;
+        offset += entries.length;
+      }
+      return files;
+    };
+
+    const files = await listFiles(prefix);
+    for (let start = 0; start < files.length; start += 100) {
+      const { error } = await bucket.remove(files.slice(start, start + 100));
+      if (error) throw new Error(error.message);
+    }
+    return;
+  }
+
+  const usersRoot = path.resolve(storageRootPath(), "users");
+  const accountRoot = path.resolve(usersRoot, userId);
+  if (!accountRoot.startsWith(`${usersRoot}${path.sep}`)) throw new Error("Invalid user storage path.");
+  rmSync(accountRoot, { recursive: true, force: true });
 }
 
 function contentTypeFor(relativePath: string): string {

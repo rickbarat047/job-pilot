@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluatePermission } from "./permissions";
+import { evaluatePermission, isAutoApplyCategoryEligible } from "./permissions";
 import { hashPassword, verifyPassword, validatePasswordStrength } from "./password";
 
 describe("permissions", () => {
@@ -25,6 +25,13 @@ describe("permissions", () => {
   it("blocks auto-apply below level 4", () => {
     const decision = evaluatePermission(base, "auto_apply");
     expect(decision.allowed).toBe(false);
+  });
+
+  it("requires a selected, matching category before auto-apply", () => {
+    expect(isAutoApplyCategoryEligible("Software Engineering & QA", [])).toBe(false);
+    expect(isAutoApplyCategoryEligible(null, ["Software Engineering & QA"])).toBe(false);
+    expect(isAutoApplyCategoryEligible("software engineering & qa", ["Software Engineering & QA"])).toBe(true);
+    expect(isAutoApplyCategoryEligible("Marketing & Creative", ["Software Engineering & QA"])).toBe(false);
   });
 });
 

@@ -165,6 +165,7 @@ create table if not exists public.job_sources (
 
 create table if not exists public.jobs (
   id text primary key,
+  owner_user_id text references public.users(id) on delete cascade,
   title text not null,
   company_id text references public.companies(id) on delete set null,
   company_name text not null,

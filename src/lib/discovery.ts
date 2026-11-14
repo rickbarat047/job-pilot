@@ -1,4 +1,5 @@
 import { get, newId, nowIso, run, all } from "./db";
+import { createHash } from "node:crypto";
 import { getProfile, getPreferences, getPermissionsForUser, getJobById } from "./repositories";
 import { matchJob } from "./matching";
 import { dedupeBatch, applicationDuplicateKey } from "./dedupe";
@@ -29,44 +30,48 @@ async function findCompanyForJob(job: NormalizedJob): Promise<string | null> {
   return id;
 }
 
-export async function upsertJob(job: NormalizedJob): Promise<UpsertJobResult> {
+export async function upsertJob(job: NormalizedJob, ownerUserId?: string): Promise<UpsertJobResult> {
+  if (job.source === "manual" && !ownerUserId) throw new Error("Manual jobs must have an owning account.");
+  const storedJob = job.source === "manual"
+    ? { ...job, fingerprint: createHash("sha256").update(`${ownerUserId}:${job.fingerprint}`).digest("hex") }
+    : job;
   const now = nowIso();
-  const existingById = await get<{ id: string }>("SELECT id FROM jobs WHERE id = ?", [job.id]);
+  const existingById = await get<{ id: string }>("SELECT id FROM jobs WHERE id = ?", [storedJob.id]);
   if (existingById) {
     await run(
       `UPDATE jobs SET title=?, company_name=?, description=?, description_html=?, location=?, city=?, country=?,
        remote_status=?, employment_type=?, experience_required=?, education_requirements=?, skills_required=?,
        salary_min=?, salary_max=?, salary_currency=?, salary_text=?, application_url=?, application_method=?,
        posted_at=COALESCE(?, posted_at), last_verified_at=?, status='active', reliability=?, raw_json=?, updated_at=? WHERE id=?`,
-      [job.title, job.companyName, job.description, job.descriptionHtml ?? null, job.location, job.city ?? null, job.country,
-        job.remoteStatus, job.employmentType, job.experienceRequired ?? null, job.educationRequirements ?? null, JSON.stringify(job.skillsRequired),
-        job.salaryMin ?? null, job.salaryMax ?? null, job.salaryCurrency ?? null, job.salaryText ?? null, job.applicationUrl, job.applicationMethod,
-        job.postedAt ?? null, now, job.reliability, JSON.stringify(job.raw ?? {}), now, job.id],
+      [storedJob.title, storedJob.companyName, storedJob.description, storedJob.descriptionHtml ?? null, storedJob.location, storedJob.city ?? null, storedJob.country,
+        storedJob.remoteStatus, storedJob.employmentType, storedJob.experienceRequired ?? null, storedJob.educationRequirements ?? null, JSON.stringify(storedJob.skillsRequired),
+        storedJob.salaryMin ?? null, storedJob.salaryMax ?? null, storedJob.salaryCurrency ?? null, storedJob.salaryText ?? null, storedJob.applicationUrl, storedJob.applicationMethod,
+        storedJob.postedAt ?? null, now, storedJob.reliability, JSON.stringify(storedJob.raw ?? {}), now, storedJob.id],
     );
-    return { id: job.id, isNew: false };
+    return { id: storedJob.id, isNew: false };
   }
-  const existingByFingerprint = await get<{ id: string }>("SELECT id FROM jobs WHERE fingerprint = ?", [job.fingerprint]);
+  const existingByFingerprint = await get<{ id: string }>("SELECT id FROM jobs WHERE fingerprint = ?", [storedJob.fingerprint]);
   if (existingByFingerprint) {
     await run(
       `UPDATE jobs SET last_verified_at=?, status='active', reliability=CASE WHEN reliability > ? THEN reliability ELSE ? END, updated_at=? WHERE id=?`,
-      [now, job.reliability, job.reliability, now, existingByFingerprint.id],
+      [now, storedJob.reliability, storedJob.reliability, now, existingByFingerprint.id],
     );
     return { id: existingByFingerprint.id, isNew: false };
   }
-  const companyId = await findCompanyForJob(job);
+  const companyId = await findCompanyForJob(storedJob);
   await run(
-    `INSERT INTO jobs (id, title, company_id, company_name, company_website, career_page_url, description, description_html,
+    `INSERT INTO jobs (id, owner_user_id, title, company_id, company_name, company_website, career_page_url, description, description_html,
       location, city, country, remote_status, employment_type, experience_required, education_requirements, skills_required,
       salary_min, salary_max, salary_currency, salary_text, application_url, application_method, source, source_job_id,
       posted_at, last_verified_at, status, reliability, fingerprint, raw_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
-    [job.id, job.title, companyId, job.companyName, job.companyWebsite ?? null, job.careerPageUrl ?? null, job.description,
-      job.descriptionHtml ?? null, job.location, job.city ?? null, job.country, job.remoteStatus, job.employmentType,
-      job.experienceRequired ?? null, job.educationRequirements ?? null, JSON.stringify(job.skillsRequired), job.salaryMin ?? null, job.salaryMax ?? null,
-      job.salaryCurrency ?? null, job.salaryText ?? null, job.applicationUrl, job.applicationMethod, job.source, job.sourceJobId,
-      job.postedAt ?? null, now, job.reliability, job.fingerprint, JSON.stringify(job.raw ?? {}), now, now],
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)`,
+    [storedJob.id, storedJob.source === "manual" ? ownerUserId! : null, storedJob.title, companyId, storedJob.companyName, storedJob.companyWebsite ?? null, storedJob.careerPageUrl ?? null, storedJob.description,
+      storedJob.descriptionHtml ?? null, storedJob.location, storedJob.city ?? null, storedJob.country, storedJob.remoteStatus, storedJob.employmentType,
+      storedJob.experienceRequired ?? null, storedJob.educationRequirements ?? null, JSON.stringify(storedJob.skillsRequired), storedJob.salaryMin ?? null, storedJob.salaryMax ?? null,
+      storedJob.salaryCurrency ?? null, storedJob.salaryText ?? null, storedJob.applicationUrl, storedJob.applicationMethod, storedJob.source, storedJob.sourceJobId,
+      storedJob.postedAt ?? null, now, storedJob.reliability, storedJob.fingerprint, JSON.stringify(storedJob.raw ?? {}), now, now],
   );
-  return { id: job.id, isNew: true };
+  return { id: storedJob.id, isNew: true };
 }
 
 export interface DiscoveryOptions {

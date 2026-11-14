@@ -2,6 +2,24 @@ import type { ApplicationState, PermissionMode } from "./types";
 
 export type AutonomyLevel = 1 | 2 | 3 | 4;
 
+export const AUTO_APPLY_CATEGORIES = [
+  "Automotive & EV Engineering",
+  "Mechanical Design & CAE",
+  "Manufacturing, Quality & Operations Engineering",
+  "Field Service & Technical Support",
+  "Software Engineering & QA",
+  "Data & Business Analysis",
+  "Business, Sales & Operations",
+  "Customer & Technical Support",
+  "Finance, HR & Administration",
+  "Marketing & Creative",
+  "Graduate Trainee & Apprenticeship Programs",
+] as const;
+
+export function isAutoApplyCategoryEligible(roleFamily: string | null | undefined, selected: readonly string[]): boolean {
+  return Boolean(roleFamily && selected.some((category) => category.toLowerCase() === roleFamily.toLowerCase()));
+}
+
 export interface UserPermissions {
   autonomyLevel: AutonomyLevel;
   searchJobs: PermissionMode;

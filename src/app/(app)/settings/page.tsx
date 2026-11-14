@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/form-controls";
 import { Select } from "@/components/ui/form-controls";
 import { Checkbox } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
+import { AUTO_APPLY_CATEGORIES } from "@/lib/permissions";
 
 interface EmailIntegration {
   provider: string;
@@ -34,6 +36,7 @@ const EMPTY_INTEGRATION: EmailIntegration = {
 };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [permissions, setPermissions] = useState<Record<string, unknown>>({});
   const [notifications, setNotifications] = useState<Record<string, unknown>>({});
   const [email, setEmail] = useState<EmailIntegration>(EMPTY_INTEGRATION);
@@ -41,6 +44,15 @@ export default function SettingsPage() {
   const [worker, setWorker] = useState<WorkerStatus | null>(null);
   const [saving, setSaving] = useState("");
   const [testing, setTesting] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const autoApplyCategories = Array.isArray(permissions.autoApplyCategories) ? permissions.autoApplyCategories as string[] : [];
+
+  function toggleAutoApplyCategory(category: string, checked: boolean) {
+    const next = checked
+      ? [...new Set([...autoApplyCategories, category])]
+      : autoApplyCategories.filter((value) => value !== category);
+    setPermissions({ ...permissions, autoApplyCategories: next });
+  }
 
   const loadWorker = useCallback(async () => {
     try {
@@ -51,6 +63,20 @@ export default function SettingsPage() {
       setWorker({ status: "offline", lastHeartbeat: null, online: false, meta: {} });
     }
   }, []);
+
+  async function deleteAccount() {
+    if (!confirm("Delete your account and all data? This cannot be undone.")) return;
+    setDeletingAccount(true);
+    try {
+      const response = await fetch("/api/settings/account", { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to delete account. Please retry.");
+      router.replace("/");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete account. Please retry.");
+      setDeletingAccount(false);
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -63,9 +89,12 @@ export default function SettingsPage() {
       if (n.preferences) setNotifications(n.preferences);
       if (e.integration) setEmail({ ...EMPTY_INTEGRATION, ...e.integration });
     })();
-    loadWorker();
+    const initialWorkerLoad = window.setTimeout(() => { void loadWorker(); }, 0);
     const timer = window.setInterval(loadWorker, 30_000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearTimeout(initialWorkerLoad);
+      window.clearInterval(timer);
+    };
   }, [loadWorker]);
 
   async function savePermissions() {
@@ -144,13 +173,40 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div>
             <Label>Autonomy level</Label>
-            <Select value={String(permissions.autonomyLevel ?? 3)} onChange={(e) => setPermissions({ ...permissions, autonomyLevel: Number(e.target.value) })}>
+            <Select value={String(permissions.autonomyLevel ?? 3)} onChange={(e) => {
+              const level = Number(e.target.value);
+              setPermissions({ ...permissions, autonomyLevel: level, ...(level < 4 ? { submitApplications: "approval" } : {}) });
+            }}>
               <option value="1">1 — Discovery only</option>
               <option value="2">2 — Discover + prepare</option>
               <option value="3">3 — Apply with approval</option>
               <option value="4">4 — Rule-based auto-apply</option>
             </Select>
           </div>
+          {Number(permissions.autonomyLevel) === 4 ? (
+            <div className="space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+              <p className="text-sm font-medium">Automatic submission is off until you explicitly enable it and choose the roles it may apply to.</p>
+              <label className="flex items-start gap-2 text-sm">
+                <Checkbox checked={permissions.submitApplications === "automatic"} onChange={(e) => setPermissions({ ...permissions, submitApplications: e.target.checked ? "automatic" : "approval" })} />
+                <span>Allow rule-based applications without reviewing each individual submission.</span>
+              </label>
+              <div>
+                <Label>Minimum match score</Label>
+                <Input type="number" min={70} max={100} step={1} value={Number(permissions.autoApplyMinScore ?? 85)} onChange={(e) => setPermissions({ ...permissions, autoApplyMinScore: e.target.value === "" ? 0 : Number(e.target.value) })} aria-label="Minimum match score for auto-apply" />
+                <p className="mt-1 text-xs text-muted-foreground">Choose a score from 70 to 100. Higher scores reduce the number of automatic applications.</p>
+              </div>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Role categories allowed for auto-apply</legend>
+                {AUTO_APPLY_CATEGORIES.map((category) => (
+                  <label key={category} className="flex min-h-9 items-center gap-2 text-sm">
+                    <Checkbox checked={autoApplyCategories.includes(category)} onChange={(e) => toggleAutoApplyCategory(category, e.target.checked)} />
+                    {category}
+                  </label>
+                ))}
+              </fieldset>
+              {permissions.submitApplications === "automatic" && autoApplyCategories.length === 0 ? <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">Select at least one role category before automatic applications can run.</p> : null}
+            </div>
+          ) : null}
           <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(permissions.demoMode)} onChange={(e) => setPermissions({ ...permissions, demoMode: e.target.checked })} /> Demo mode (simulate submissions, never contact employers)</label>
           <label className="flex min-h-10 items-center gap-2 rounded-lg px-1 py-1 text-sm"><Checkbox checked={Boolean(permissions.allowDuplicateApplications)} onChange={(e) => setPermissions({ ...permissions, allowDuplicateApplications: e.target.checked })} /> Allow duplicate applications</label>
           <Button onClick={savePermissions} disabled={saving === "permissions"}>{saving === "permissions" ? "Saving…" : "Save permissions"}</Button>
@@ -229,10 +285,10 @@ export default function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Data control</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Data control</CardTitle><CardDescription>Download your account records as JSON, or permanently remove your account and stored files.</CardDescription></CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => window.open("/api/settings/account", "_blank")}>Export data</Button>
-          <Button variant="destructive" onClick={async () => { if (confirm("Delete your account and all data? This cannot be undone.")) { await fetch("/api/settings/account", { method: "DELETE" }); window.location.href = "/"; } }}>Delete account</Button>
+          <Button variant="destructive" onClick={deleteAccount} disabled={deletingAccount}>{deletingAccount ? "Deleting…" : "Delete account"}</Button>
         </CardContent>
       </Card>
     </div>

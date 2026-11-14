@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A job URL is required, for example https://company.com/careers/role." }, { status: 400 });
     }
     const job = await importManualJob(body);
-    const result = await upsertJob(job);
+    const result = await upsertJob(job, user.id);
     const profile = await getProfile(user.id);
     const prefs = await getPreferences(user.id);
     const storedJob = await getJobById(result.id);

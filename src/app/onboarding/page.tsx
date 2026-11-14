@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/form-controls";
 import { Select } from "@/components/ui/form-controls";
 import { Checkbox } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/misc";
+import { AUTO_APPLY_CATEGORIES } from "@/lib/permissions";
 
 const STEPS = ["Upload CV", "Career profile", "Preferences", "Flexibility", "Permissions"];
 
@@ -21,6 +22,14 @@ export default function OnboardingPage() {
   const [preferences, setPreferences] = useState<Record<string, unknown>>({});
   const [permissions, setPermissions] = useState<Record<string, unknown>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
+  const autoApplyCategories = Array.isArray(permissions.autoApplyCategories) ? permissions.autoApplyCategories as string[] : [];
+
+  function toggleAutoApplyCategory(category: string, checked: boolean) {
+    const next = checked
+      ? [...new Set([...autoApplyCategories, category])]
+      : autoApplyCategories.filter((value) => value !== category);
+    setPermissions({ ...permissions, autoApplyCategories: next });
+  }
 
   useEffect(() => {
     (async () => {
@@ -220,17 +229,44 @@ export default function OnboardingPage() {
 
       {step === 4 && (
         <Card>
-          <CardHeader><CardTitle>Automation permissions</CardTitle><CardDescription>Default is apply with approval. You can change this later.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Automation permissions</CardTitle><CardDescription>Applications require your approval by default. Automatic submission needs its own opt-in and rules.</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             <div>
               <Label>Autonomy level</Label>
-              <Select value={String(permissions.autonomyLevel ?? 3)} onChange={(e) => setPermissions({ ...permissions, autonomyLevel: Number(e.target.value) })}>
+              <Select value={String(permissions.autonomyLevel ?? 3)} onChange={(e) => {
+                const level = Number(e.target.value);
+                setPermissions({ ...permissions, autonomyLevel: level, ...(level < 4 ? { submitApplications: "approval" } : {}) });
+              }}>
                 <option value="1">1 — Discovery only</option>
                 <option value="2">2 — Discover + prepare</option>
                 <option value="3">3 — Apply with approval (recommended)</option>
                 <option value="4">4 — Rule-based auto-apply</option>
               </Select>
             </div>
+            {Number(permissions.autonomyLevel) === 4 ? (
+              <div className="space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                <p className="text-sm font-medium">Choose exactly which applications JobPilot may submit automatically. You can keep per-application approval instead.</p>
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox checked={permissions.submitApplications === "automatic"} onChange={(e) => setPermissions({ ...permissions, submitApplications: e.target.checked ? "automatic" : "approval" })} />
+                  <span>Allow rule-based applications without reviewing each individual submission.</span>
+                </label>
+                <div>
+                  <Label>Minimum match score</Label>
+                  <Input type="number" min={70} max={100} step={1} value={Number(permissions.autoApplyMinScore ?? 85)} onChange={(e) => setPermissions({ ...permissions, autoApplyMinScore: e.target.value === "" ? 0 : Number(e.target.value) })} aria-label="Minimum match score for auto-apply" />
+                  <p className="mt-1 text-xs text-muted-foreground">Choose a score from 70 to 100. Higher scores reduce the number of automatic applications.</p>
+                </div>
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Role categories allowed for auto-apply</legend>
+                  {AUTO_APPLY_CATEGORIES.map((category) => (
+                    <label key={category} className="flex min-h-9 items-center gap-2 text-sm">
+                      <Checkbox checked={autoApplyCategories.includes(category)} onChange={(e) => toggleAutoApplyCategory(category, e.target.checked)} />
+                      {category}
+                    </label>
+                  ))}
+                </fieldset>
+                {permissions.submitApplications === "automatic" && autoApplyCategories.length === 0 ? <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">Select at least one role category before automatic applications can run.</p> : null}
+              </div>
+            ) : null}
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(permissions.demoMode)} onChange={(e) => setPermissions({ ...permissions, demoMode: e.target.checked })} /> Demo mode (no real submissions or emails)</label>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <Button variant="outline" onClick={() => setStep(3)}>Back</Button>

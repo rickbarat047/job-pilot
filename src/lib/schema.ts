@@ -190,6 +190,7 @@ CREATE TABLE IF NOT EXISTS job_sources (
 
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
+  owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   company_id TEXT REFERENCES companies(id) ON DELETE SET NULL,
   company_name TEXT NOT NULL,

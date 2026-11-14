@@ -1,7 +1,7 @@
 import { all, get, newId, nowIso, parseJson, run } from "./db";
 import { runDiscovery } from "./discovery";
 import { createNotification, getPermissionsForUser } from "./repositories";
-import { evaluatePermission } from "./permissions";
+import { evaluatePermission, isAutoApplyCategoryEligible } from "./permissions";
 import { isDefinitivelyClosedPostingStatus } from "./job-verification";
 import { fetchHead, mapWithConcurrency } from "./sources/http";
 import { checkCompanyCareerPage } from "./companies/check";
@@ -128,8 +128,10 @@ async function runTask(userId: string, type: string, payload: Record<string, unk
     case "auto-apply": {
       const permissions = await getPermissionsForUser(userId);
       if (permissions.autonomyLevel < 4) throw new Error("Auto-apply requires autonomy level 4.");
-      const minScore = permissions.autoApplyMinScore || 85;
-      const categories = new Set(permissions.autoApplyCategories.map((value) => value.toLowerCase()));
+      const minScore = permissions.autoApplyMinScore;
+      if (permissions.submitApplications !== "automatic") throw new Error("Automatic submission permission is not enabled.");
+      if (permissions.autoApplyCategories.length === 0) throw new Error("Choose at least one role category before enabling auto-apply.");
+      const categories = permissions.autoApplyCategories;
       const rows = await all<{ job_id: string; overall_score: number; title: string; role_family: string | null }>(
         `SELECT jm.job_id, jm.overall_score, j.title, jm.role_family FROM job_matches jm JOIN jobs j ON j.id = jm.job_id
          WHERE jm.user_id = ? AND jm.overall_score >= ? AND jm.qualified = 1 AND j.status = 'active' ORDER BY jm.overall_score DESC LIMIT 5`,
@@ -137,10 +139,11 @@ async function runTask(userId: string, type: string, payload: Record<string, unk
       );
       const decision = evaluatePermission(permissions, "auto_apply");
       if (!decision.allowed) throw new Error(decision.reason);
+      if (decision.requiresApproval) throw new Error("Your current permissions require approval for each application.");
       if (!await workerIsOnline()) throw new Error("The browser automation worker is offline; auto-apply is paused.");
 
       for (const row of rows) {
-        if (categories.size && row.role_family && !categories.has(String(row.role_family).toLowerCase())) continue;
+        if (!isAutoApplyCategoryEligible(row.role_family, categories)) continue;
         // Auto-apply never manufactures an application or answers sensitive
         // questions. It only submits a prepared, approved draft.
         const application = await get<{ id: string; state: string }>(
