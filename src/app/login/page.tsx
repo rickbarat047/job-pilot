@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,10 +59,10 @@ export default function LoginPage() {
 
       <div className="flex min-w-0 flex-1 flex-col px-5 py-8 sm:px-8">
         {/* Mobile-only brand */}
-        <a href="/" className="mb-auto flex items-center gap-2.5 sm:mt-2 lg:hidden" aria-label="JobPilot AI home">
+        <Link href="/" className="mb-auto flex items-center gap-2.5 sm:mt-2 lg:hidden" aria-label="JobPilot AI home">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-base font-bold text-primary-foreground">J</span>
           <span className="font-display text-lg font-semibold tracking-tight">JobPilot AI</span>
-        </a>
+        </Link>
 
         <div className="mx-auto my-auto w-full max-w-sm py-10">
           <h1 className="font-display text-3xl font-semibold tracking-[-0.02em]">Welcome back</h1>
@@ -127,12 +128,12 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-sm text-muted-foreground">
-            No account yet? <a href="/register" className="inline-block py-2 -my-2 font-medium text-primary hover:underline">Create one</a>
+            No account yet? <Link href="/register" className="inline-block py-2 -my-2 font-medium text-primary hover:underline">Create one</Link>
           </p>
         </div>
 
         <p className="mx-auto w-full max-w-sm text-xs text-muted-foreground lg:hidden">
-          <a href="/" className="inline-block rounded-lg px-2 py-2 -ml-2 transition-colors hover:text-foreground">← Back to home</a>
+          <Link href="/" className="inline-block rounded-lg px-2 py-2 -ml-2 transition-colors hover:text-foreground">← Back to home</Link>
         </p>
       </div>
     </main>
