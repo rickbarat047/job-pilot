@@ -53,8 +53,7 @@ export const leverAdapter: JobSourceAdapter = {
       try {
         const url = `https://api.lever.co/v0/postings/${encodeURIComponent(company.ats!.identifier)}?mode=json`;
         const data = await fetchJson<LeverPosting[]>(url, { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-        const boardJobs = (data ?? []).slice(0, PER_BOARD_LIMIT);
-        for (const job of boardJobs) {
+        for (const job of data ?? []) {
           const location = job.categories?.location ?? (job.categories?.allLocations ?? []).join(", ") ?? "";
           const country = (job.country ?? "").toUpperCase();
           const parsed = parseLocation(location);
@@ -62,6 +61,7 @@ export const leverAdapter: JobSourceAdapter = {
             if (!/india/i.test(location)) { localSkipped++; continue; }
           }
           if (parsed.country !== "India" && !/india/i.test(location)) { localSkipped++; continue; }
+          if (localJobs.length >= PER_BOARD_LIMIT) break;
           localJobs.push(
             buildNormalizedJob({
               source: "lever",

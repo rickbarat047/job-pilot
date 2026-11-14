@@ -50,13 +50,14 @@ export const ashbyAdapter: JobSourceAdapter = {
       try {
         const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(company.ats!.identifier)}`;
         const data = await fetchJson<AshbyResponse>(url, { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-        const boardJobs = (data.jobs ?? []).filter((j) => j.isListed !== false).slice(0, PER_BOARD_LIMIT);
-        for (const job of boardJobs) {
+        for (const job of data.jobs ?? []) {
+          if (job.isListed === false) continue;
           const allLocations = [job.location ?? "", ...(job.secondaryLocations ?? [])];
           const locationText = allLocations.filter(Boolean).join(", ");
           const india = allLocations.some((loc) => /india/i.test(loc));
           const remoteGlobal = Boolean(job.isRemote) && /worldwide|global|anywhere|remote/i.test(locationText);
           if (!india && !remoteGlobal) { localSkipped++; continue; }
+          if (localJobs.length >= PER_BOARD_LIMIT) break;
           localJobs.push(
             buildNormalizedJob({
               source: "ashby",

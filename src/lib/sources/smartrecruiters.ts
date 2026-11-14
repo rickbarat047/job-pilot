@@ -30,7 +30,7 @@ interface SRDetail extends SRPosting {
   jobAd?: { sections?: Record<string, { title?: string; text?: string }> };
 }
 
-const PER_BOARD_LIMIT = 3;
+const PER_BOARD_LIMIT = 30;
 
 function sectionText(detail: SRDetail): string {
   const sections = detail.jobAd?.sections ?? {};
@@ -69,7 +69,9 @@ export const smartRecruitersAdapter: JobSourceAdapter = {
       try {
         const listUrl = `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(company.ats!.identifier)}/postings?limit=100&country=in`;
         const list = await fetchJson<SRListResponse>(listUrl, { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-        const postings = (list.content ?? []).filter((p) => p.active !== false).slice(0, PER_BOARD_LIMIT);
+        const postings = (list.content ?? [])
+          .filter((posting) => posting.active !== false && parseLocation(locationString(posting)).country === "India")
+          .slice(0, PER_BOARD_LIMIT);
         const details = await mapWithConcurrency(postings, 4, async (posting) => {
           try {
             const detail = await fetchJson<SRDetail>(

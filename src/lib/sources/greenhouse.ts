@@ -44,14 +44,14 @@ export const greenhouseAdapter: JobSourceAdapter = {
       try {
         const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(company.ats!.identifier)}/jobs?content=true`;
         const data = await fetchJson<GreenhouseResponse>(url, { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-        const boardJobs = (data.jobs ?? []).slice(0, PER_BOARD_LIMIT);
-        for (const job of boardJobs) {
+        for (const job of data.jobs ?? []) {
           const location = job.location?.name ?? "";
           const parsed = parseLocation(location);
           if (parsed.country !== "India" && !isIndiaEligibleRemote(location, job.content ?? "")) {
             localSkipped++;
             continue;
           }
+          if (localJobs.length >= PER_BOARD_LIMIT) break;
           const html = decodeEntities(job.content ?? "");
           localJobs.push(
             buildNormalizedJob({
