@@ -1,4 +1,4 @@
-import { affectedRows, get, newId, nowIso, parseJson, run, all } from "./db";
+import { affectedRows, get, newId, nowIso, parseJson, run, all, transaction } from "./db";
 import {
   createNotification,
   getApplicationDetail,
@@ -171,6 +171,15 @@ export async function recordWorkerResult(taskId: string, input: WorkerResultInpu
   if (!task) throw new Error("Browser task not found.");
   if (String(task.type) !== "browser-apply") throw new Error("This task is not a browser application.");
 
+  // Worker result callbacks may be retried after a network timeout. Return the
+  // recorded outcome for terminal tasks instead of duplicating application
+  // events, notifications, or retry scheduling.
+  const taskStatus = String(task.status);
+  if (taskStatus === "succeeded") return { ok: true, state: "Applied", status: "applied", alreadyRecorded: true };
+  if (taskStatus === "manual_required") return { ok: true, state: "Approved", status: "manual_required", alreadyRecorded: true };
+  if (taskStatus === "failed") return { ok: true, state: "Application Failed", status: "failed", alreadyRecorded: true };
+  if (taskStatus !== "running") throw new Error("Browser task is no longer running; its result was not changed.");
+
   const userId = String(task.user_id);
   const payload = parseJson<Record<string, unknown>>(task.payload, {});
   const applicationId = typeof payload.applicationId === "string" ? payload.applicationId : "";
@@ -202,22 +211,40 @@ export async function recordWorkerResult(taskId: string, input: WorkerResultInpu
   const title = jobRow?.title ? String(jobRow.title) : "This application";
 
   if (input.status === "applied") {
-    await run(
-      "UPDATE applications SET state='Applied', applied_at=?, last_event_at=?, updated_at=? WHERE id=? AND user_id=?",
-      [now, now, now, applicationId, userId],
-    );
-    await run(
-      `INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at)
-       VALUES (?, ?, ?, 'application.submitted_browser', ?, 'Applied', ?, ?)`,
-      [newId("evt"), applicationId, userId, fromState, JSON.stringify({
-        message, confirmation: input.confirmation ?? null, finalUrl: input.finalUrl ?? null,
-        fieldsFilled: input.fieldsFilled ?? [], screenshotPath: input.screenshotPath ?? null,
-      }), now],
-    );
-    await run(
-      "UPDATE automation_tasks SET status='succeeded', last_error=NULL, locked_at=NULL, updated_at=? WHERE id=?",
-      [now, taskId],
-    );
+    const recorded = await transaction(async (db) => {
+      const currentTask = await db.get<Row>("SELECT status FROM automation_tasks WHERE id=?", [taskId]);
+      if (!currentTask) throw new Error("Browser task not found.");
+      if (String(currentTask.status) === "succeeded") return false;
+      if (String(currentTask.status) !== "running") throw new Error("Browser task is no longer running; its result was not changed.");
+
+      const currentApplication = await db.get<Row>("SELECT state FROM applications WHERE id=? AND user_id=?", [applicationId, userId]);
+      if (!currentApplication) throw new Error("Application no longer exists.");
+      if (String(currentApplication.state) === "Applied") {
+        await db.run("UPDATE automation_tasks SET status='succeeded', last_error=NULL, locked_at=NULL, updated_at=? WHERE id=? AND status='running'", [now, taskId]);
+        return false;
+      }
+      if (String(currentApplication.state) !== "Applying") throw new Error("Application is no longer in the applying state; the worker result was not recorded.");
+
+      const changed = await db.run(
+        "UPDATE automation_tasks SET status='succeeded', last_error=NULL, locked_at=NULL, updated_at=? WHERE id=? AND status='running'",
+        [now, taskId],
+      );
+      if (affectedRows(changed) !== 1) return false;
+      await db.run(
+        "UPDATE applications SET state='Applied', applied_at=?, last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Applying'",
+        [now, now, now, applicationId, userId],
+      );
+      await db.run(
+        `INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at)
+         VALUES (?, ?, ?, 'application.submitted_browser', 'Applying', 'Applied', ?, ?)`,
+        [newId("evt"), applicationId, userId, JSON.stringify({
+          message, confirmation: input.confirmation ?? null, finalUrl: input.finalUrl ?? null,
+          fieldsFilled: input.fieldsFilled ?? [], screenshotPath: input.screenshotPath ?? null,
+        }), now],
+      );
+      return true;
+    });
+    if (!recorded) return { ok: true, state: "Applied", status: "applied", alreadyRecorded: true };
     await createNotification(
       userId,
       "application",
