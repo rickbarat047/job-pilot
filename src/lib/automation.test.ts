@@ -49,8 +49,9 @@ describe("active job verification", () => {
     const result = await verifyActiveJobs(12);
 
     expect(result).toEqual({ checked: 4, refreshed: 1, expired: 1, unchanged: 2 });
-    expect(mocks.all).toHaveBeenCalledWith(expect.stringContaining("ORDER BY last_verified_at ASC"), [12]);
-    expect(mocks.run).toHaveBeenCalledTimes(2);
+    expect(mocks.all).toHaveBeenCalledWith(expect.stringContaining("id > ? ORDER BY id ASC"), ["", 12]);
+    expect(mocks.run).toHaveBeenCalledTimes(3);
+    expect(mocks.run).toHaveBeenCalledWith(expect.stringContaining("job_verify_cursor"), ["timeout"]);
     const expireCall = mocks.run.mock.calls.find(([sql]) => String(sql).includes("status='expired'"));
     const refreshCall = mocks.run.mock.calls.find(([sql]) => String(sql).includes("last_verified_at=? WHERE id=? AND status='active'"));
     expect(expireCall?.[1]).toEqual(["2026-11-14T00:00:00.000Z", "closed"]);
@@ -59,6 +60,18 @@ describe("active job verification", () => {
 
   it("clamps verification batches to a safe range", async () => {
     await verifyActiveJobs(0);
-    expect(mocks.all).toHaveBeenCalledWith(expect.any(String), [1]);
+    expect(mocks.all).toHaveBeenCalledWith(expect.any(String), ["", 1]);
+  });
+
+  it("wraps the cursor when it has reached the end of active jobs", async () => {
+    mocks.get.mockResolvedValue({ value: "z-last" });
+    mocks.all.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: "a-first", application_url: "https://example.com/open" }]);
+
+    const result = await verifyActiveJobs(1);
+
+    expect(result.checked).toBe(1);
+    expect(mocks.all).toHaveBeenNthCalledWith(1, expect.stringContaining("id > ? ORDER BY id ASC"), ["z-last", 1]);
+    expect(mocks.all).toHaveBeenNthCalledWith(2, expect.stringContaining("ORDER BY id ASC"), [1]);
+    expect(mocks.run).toHaveBeenCalledWith(expect.stringContaining("job_verify_cursor"), ["a-first"]);
   });
 });

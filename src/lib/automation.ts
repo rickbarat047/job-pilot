@@ -27,10 +27,20 @@ export async function retryTask(userId: string, taskId: string): Promise<void> {
 
 export async function verifyActiveJobs(limit = 20): Promise<{ checked: number; refreshed: number; expired: number; unchanged: number }> {
   const batchSize = Math.max(1, Math.min(50, Math.trunc(limit)));
-  const jobs = await all<{ id: string; application_url: string }>(
-    "SELECT id, application_url FROM jobs WHERE status='active' ORDER BY last_verified_at ASC LIMIT ?",
-    [batchSize],
+  const cursorRow = await get<{ value: string }>("SELECT value FROM app_meta WHERE key='job_verify_cursor'");
+  const cursor = cursorRow?.value ?? "";
+  let jobs = await all<{ id: string; application_url: string }>(
+    "SELECT id, application_url FROM jobs WHERE status='active' AND id > ? ORDER BY id ASC LIMIT ?",
+    [cursor, batchSize],
   );
+  if (jobs.length === 0 && cursor) {
+    // Wrap around so transient failures cannot permanently starve later jobs.
+    jobs = await all<{ id: string; application_url: string }>(
+      "SELECT id, application_url FROM jobs WHERE status='active' ORDER BY id ASC LIMIT ?",
+      [batchSize],
+    );
+  }
+  const nextCursor = jobs.at(-1)?.id ?? "";
   const outcomes = await mapWithConcurrency(jobs, 4, async (job) => {
     try {
       const response = await fetchHead(job.application_url);
@@ -47,6 +57,10 @@ export async function verifyActiveJobs(limit = 20): Promise<{ checked: number; r
     }
     return "unchanged" as const;
   });
+  await run(
+    "INSERT INTO app_meta (key, value) VALUES ('job_verify_cursor', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    [nextCursor],
+  );
   return {
     checked: jobs.length,
     refreshed: outcomes.filter((outcome) => outcome === "refreshed").length,
