@@ -3,6 +3,20 @@
 
 export const WORKER_STATUSES = ["online", "offline"];
 
+export function isFinalApplicationSubmitLabel(value) {
+  const label = String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!label || /\b(continue|next|save|review|preview|back|previous)\b/.test(label)) return false;
+  return /\b(apply|submit|send application)\b/.test(label);
+}
+
+export function hasNewSubmissionConfirmation(before, after) {
+  const success = /thank you for applying|application (has been )?received|application submitted successfully|we have received your application|we've received your application/i;
+  const normalize = (value) => String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const oldText = normalize(before);
+  const newText = normalize(after);
+  return newText !== oldText && !success.test(oldText) && success.test(newText);
+}
+
 export function validateEnv(env) {
   const errors = [];
   const appUrl = env?.APP_URL;

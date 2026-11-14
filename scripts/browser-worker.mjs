@@ -16,7 +16,7 @@
 //   BROWSER_TIMEOUT_MS     default 120000
 //   ONE_SHOT               if "1", process one task then exit
 
-import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, shouldFailWorkflowOnHttpStatus } from "./browser-worker-lib.mjs";
+import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, shouldFailWorkflowOnHttpStatus, isFinalApplicationSubmitLabel, hasNewSubmissionConfirmation } from "./browser-worker-lib.mjs";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 5000);
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 20000);
@@ -412,23 +412,21 @@ async function executeTask(taskPayload) {
     finalUrl = page.url();
 
     if (submit) {
-      const btnSelectors = [
-        'button[type="submit"]',
-        'input[type="submit"]',
-        'button:has-text("Submit")',
-        'button:has-text("Apply")',
-        'button:has-text("Send")',
-      ];
+      const visiblePageTextBefore = await page.locator("body").innerText().catch(() => "");
+      const submitControls = await page.locator('button, input[type="submit"], [role="button"]').all();
       let clicked = false;
-      for (const sel of btnSelectors) {
-        const btn = page.locator(sel).first();
-        if (await btn.count()) {
-          try {
-            await btn.click({ timeout: 5000 });
-            clicked = true;
-            break;
-          } catch { /* try next */ }
-        }
+      for (const btn of submitControls) {
+        const label = [
+          await btn.innerText().catch(() => ""),
+          await btn.getAttribute("value").catch(() => ""),
+          await btn.getAttribute("aria-label").catch(() => ""),
+        ].filter(Boolean).join(" ");
+        if (!isFinalApplicationSubmitLabel(label)) continue;
+        try {
+          await btn.click({ timeout: 5000 });
+          clicked = true;
+          break;
+        } catch { /* try the next explicitly labeled submit control */ }
       }
       if (!clicked) {
         return { status: "manual_required", message: `Form filled (${ats} adapter) but no submit button found; manual completion required.`, finalUrl, fieldsFilled, screenshotPath };
@@ -436,7 +434,7 @@ async function executeTask(taskPayload) {
       await page.waitForTimeout(3000);
       finalUrl = page.url();
       const visiblePageText = await page.locator("body").innerText().catch(() => "");
-      const confirmed = /thank you for applying|application (has been )?received|application submitted successfully|we have received your application|we've received your application/i.test(visiblePageText);
+      const confirmed = hasNewSubmissionConfirmation(visiblePageTextBefore, visiblePageText);
       if (confirmed) {
         return { status: "applied", message: `Application submitted via ${ats} adapter.`, finalUrl, fieldsFilled, screenshotPath };
       }
