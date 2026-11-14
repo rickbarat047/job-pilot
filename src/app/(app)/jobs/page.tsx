@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/form-controls";
+import { Input, Select, Textarea } from "@/components/ui/form-controls";
 import { EmptyState } from "@/components/empty-state";
 import { JobCard } from "@/components/ui/job-card";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,7 @@ interface FilterOverrides {
 }
 
 export default function JobsPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,34 @@ export default function JobsPage() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+
+  async function importJob(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setImporting(true);
+    try {
+      const response = await fetch("/api/jobs/import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          url: form.get("url"),
+          title: form.get("title"),
+          companyName: form.get("companyName"),
+          location: form.get("location"),
+          description: form.get("description"),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to add this job.");
+      toast.success("Job added. Review its details and match before applying.");
+      router.push(`/jobs/${data.jobId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add this job.");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   function toggleCompare(id: string) {
     setCompareIds((prev) => {
@@ -115,6 +146,25 @@ export default function JobsPage() {
           {loading ? "Working…" : "Run discovery"}
         </Button>
       </div>
+
+      <Card>
+        <CardContent className="p-4 sm:p-5">
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold">Add a job from an employer link</summary>
+            <p className="mt-2 text-sm text-muted-foreground">Use this for a role you found on a site JobPilot does not scan. JobPilot will try to read the posting; you can provide details if the page blocks that.</p>
+            <form onSubmit={importJob} className="mt-4 space-y-3">
+              <Input name="url" type="url" required placeholder="https://company.com/careers/role" aria-label="Job posting URL" />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input name="title" placeholder="Role title (optional)" aria-label="Role title" />
+                <Input name="companyName" placeholder="Company (optional)" aria-label="Company name" />
+                <Input name="location" placeholder="Location (optional)" aria-label="Job location" />
+              </div>
+              <Textarea name="description" placeholder="Paste the job description if the posting page blocks access (optional)" aria-label="Job description" />
+              <Button type="submit" disabled={importing}>{importing ? "Adding job…" : "Add job and review match"}</Button>
+            </form>
+          </details>
+        </CardContent>
+      </Card>
 
       <Card className="sticky top-14 z-20 -mx-4 rounded-none border-x-0 bg-background/95 shadow-none backdrop-blur-xl md:static md:mx-0 md:rounded-2xl md:border-x md:bg-card md:shadow-sm">
         <CardContent className="p-3 sm:p-4">

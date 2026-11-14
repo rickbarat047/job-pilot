@@ -7,10 +7,20 @@ import { matchJob } from "@/lib/matching";
 import { getJobById } from "@/lib/repositories";
 import { newId, nowIso, run, get } from "@/lib/db";
 import { createNotification } from "@/lib/repositories";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
+    const limit = await checkRateLimit(`job-import:${user.id}`, 10, 15 * 60 * 1000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: limit.unavailable ? "Job import is temporarily unavailable. Try again later." : "Too many imports. Try again later." },
+        { status: limit.unavailable ? 503 : 429 },
+      );
+    }
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength > 60_000) return NextResponse.json({ error: "Job details must be 60 KB or smaller." }, { status: 413 });
     const body = await request.json().catch(() => ({}));
     if (!body || typeof body.url !== "string" || !body.url.trim()) {
       return NextResponse.json({ error: "A job URL is required, for example https://company.com/careers/role." }, { status: 400 });
