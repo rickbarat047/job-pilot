@@ -43,4 +43,29 @@ describe("remote job location eligibility", () => {
     expect(result.skipped).toBe(2);
     expect(himalayasUrl).toContain("limit=20");
   });
+
+  it("follows a bounded Himalayas cursor page and keeps its supplied apply links", async () => {
+    const himalayasUrls: string[] = [];
+    const result = await remoteBoardsAdapter.fetchJobs({
+      fetchImpl: async (input) => {
+        const url = String(input);
+        if (url.startsWith("https://himalayas.app/")) {
+          himalayasUrls.push(url);
+          const cursor = new URL(url).searchParams.get("cursor");
+          return Response.json(cursor
+            ? { jobs: [{ title: "Second Page Role", companyName: "Second Co", locationRestrictions: ["India"], guid: "second", applicationLink: "https://himalayas.app/jobs/second" }] }
+            : { jobs: [{ title: "First Page Role", companyName: "First Co", locationRestrictions: ["India"], guid: "first", applicationLink: "https://himalayas.app/jobs/first" }], nextCursor: "next-page" });
+        }
+        return Response.json({ jobs: [] });
+      },
+    });
+
+    expect(himalayasUrls).toHaveLength(2);
+    expect(new URL(himalayasUrls[0]).searchParams.get("limit")).toBe("20");
+    expect(new URL(himalayasUrls[1]).searchParams.get("cursor")).toBe("next-page");
+    expect(result.jobs.map((job) => job.title)).toEqual(["First Page Role", "Second Page Role"]);
+    expect(result.jobs.map((job) => job.applicationUrl)).toEqual([
+      "https://himalayas.app/jobs/first", "https://himalayas.app/jobs/second",
+    ]);
+  });
 });

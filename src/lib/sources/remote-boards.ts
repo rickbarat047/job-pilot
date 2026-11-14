@@ -44,6 +44,7 @@ interface HimalayasJob {
 
 interface HimalayasResponse {
   jobs?: HimalayasJob[];
+  nextCursor?: string | null;
 }
 
 interface JobicyJob {
@@ -118,39 +119,48 @@ export const remoteBoardsAdapter: JobSourceAdapter = {
     }
 
     try {
-      // The public endpoint caps each response at 20 records. Its expiryDate
-      // is a Unix timestamp in seconds; expired postings must not be surfaced.
-      const data = await fetchJson<HimalayasResponse>("https://himalayas.app/jobs/api?limit=20", { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
-      for (const job of data.jobs ?? []) {
-        if (typeof job.expiryDate === "number" && Number.isFinite(job.expiryDate) && job.expiryDate * 1000 <= Date.now()) {
-          skipped++;
-          continue;
+      // The public endpoint caps each response at 20 records. Walk a bounded
+      // number of cursor pages so discovery sees more eligible listings
+      // without crawling an unbounded feed. expiryDate is Unix seconds.
+      let cursor: string | null | undefined;
+      for (let page = 0; page < 5; page++) {
+        const url = new URL("https://himalayas.app/jobs/api");
+        url.searchParams.set("limit", "20");
+        if (cursor) url.searchParams.set("cursor", cursor);
+        const data = await fetchJson<HimalayasResponse>(url.toString(), { fetchImpl: ctx.fetchImpl, timeoutMs: 25_000 });
+        for (const job of data.jobs ?? []) {
+          if (typeof job.expiryDate === "number" && Number.isFinite(job.expiryDate) && job.expiryDate * 1000 <= Date.now()) {
+            skipped++;
+            continue;
+          }
+          const restrictions = job.locationRestrictions ?? [];
+          const locationText = restrictions.length ? restrictions.join(", ") : "Remote — eligibility not stated";
+          if (!eligibleRemoteLocation(restrictions.join(", "))) {
+            skipped++;
+            continue;
+          }
+          const salaryText = job.minSalary && job.maxSalary ? `${job.minSalary}-${job.maxSalary} ${job.currency ?? "USD"} ${job.salaryPeriod ?? "year"}` : "";
+          jobs.push(
+            buildNormalizedJob({
+              source: "himalayas",
+              sourceJobId: job.guid ?? `${job.companyName}-${job.title}`,
+              title: job.title,
+              companyName: job.companyName,
+              descriptionHtml: job.description ?? job.excerpt ?? "",
+              location: locationText,
+              workplaceType: "Remote",
+              employmentType: job.employmentType ?? "",
+              salaryText,
+              applicationUrl: job.applicationLink || "https://himalayas.app/jobs",
+              applicationMethod: "external",
+              postedAt: job.pubDate ? new Date(job.pubDate * 1000) : null,
+              reliability: 0.75,
+              raw: job,
+            }),
+          );
         }
-        const restrictions = job.locationRestrictions ?? [];
-        const locationText = restrictions.length ? restrictions.join(", ") : "Remote — eligibility not stated";
-        if (!eligibleRemoteLocation(restrictions.join(", "))) {
-          skipped++;
-          continue;
-        }
-        const salaryText = job.minSalary && job.maxSalary ? `${job.minSalary}-${job.maxSalary} ${job.currency ?? "USD"} ${job.salaryPeriod ?? "year"}` : "";
-        jobs.push(
-          buildNormalizedJob({
-            source: "himalayas",
-            sourceJobId: job.guid ?? `${job.companyName}-${job.title}`,
-            title: job.title,
-            companyName: job.companyName,
-            descriptionHtml: job.description ?? job.excerpt ?? "",
-            location: locationText,
-            workplaceType: "Remote",
-            employmentType: job.employmentType ?? "",
-            salaryText,
-            applicationUrl: job.applicationLink || "https://himalayas.app/jobs",
-            applicationMethod: "external",
-            postedAt: job.pubDate ? new Date(job.pubDate * 1000) : null,
-            reliability: 0.75,
-            raw: job,
-          }),
-        );
+        if (!data.nextCursor) break;
+        cursor = data.nextCursor;
       }
     } catch (error) {
       errors.push(`Himalayas: ${error instanceof Error ? error.message : String(error)}`);
