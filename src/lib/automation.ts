@@ -3,7 +3,7 @@ import { runDiscovery } from "./discovery";
 import { createNotification, getPermissionsForUser } from "./repositories";
 import { evaluatePermission } from "./permissions";
 import { isDefinitivelyClosedPostingStatus } from "./job-verification";
-import { fetchHead } from "./sources/http";
+import { fetchHead, mapWithConcurrency } from "./sources/http";
 import { checkCompanyCareerPage } from "./companies/check";
 
 type Row = Record<string, unknown>;
@@ -23,6 +23,36 @@ export async function enqueueTask(userId: string, type: AutomationTaskType, payl
 
 export async function retryTask(userId: string, taskId: string): Promise<void> {
   await run("UPDATE automation_tasks SET status='queued', attempts=0, next_run_at=?, last_error=NULL, updated_at=? WHERE id=? AND user_id=?", [nowIso(), nowIso(), taskId, userId]);
+}
+
+export async function verifyActiveJobs(limit = 20): Promise<{ checked: number; refreshed: number; expired: number; unchanged: number }> {
+  const batchSize = Math.max(1, Math.min(50, Math.trunc(limit)));
+  const jobs = await all<{ id: string; application_url: string }>(
+    "SELECT id, application_url FROM jobs WHERE status='active' ORDER BY last_verified_at ASC LIMIT ?",
+    [batchSize],
+  );
+  const outcomes = await mapWithConcurrency(jobs, 4, async (job) => {
+    try {
+      const response = await fetchHead(job.application_url);
+      if (isDefinitivelyClosedPostingStatus(response.status)) {
+        await run("UPDATE jobs SET last_verified_at=?, status='expired' WHERE id=? AND status='active'", [nowIso(), job.id]);
+        return "expired" as const;
+      }
+      if (response.status >= 200 && response.status < 300) {
+        await run("UPDATE jobs SET last_verified_at=? WHERE id=? AND status='active'", [nowIso(), job.id]);
+        return "refreshed" as const;
+      }
+    } catch {
+      // A timeout or network failure is not evidence that the posting closed.
+    }
+    return "unchanged" as const;
+  });
+  return {
+    checked: jobs.length,
+    refreshed: outcomes.filter((outcome) => outcome === "refreshed").length,
+    expired: outcomes.filter((outcome) => outcome === "expired").length,
+    unchanged: outcomes.filter((outcome) => outcome === "unchanged").length,
+  };
 }
 
 export async function processAutomationTasks(userId?: string, maxTasks = 4): Promise<{ processed: number; succeeded: number; failed: number }> {
@@ -71,17 +101,7 @@ async function runTask(userId: string, type: string, payload: Record<string, unk
       break;
     }
     case "verify-jobs": {
-      const jobs = await all<{ id: string; application_url: string }>("SELECT id, application_url FROM jobs WHERE status='active' ORDER BY last_verified_at ASC LIMIT 50");
-      for (const job of jobs) {
-        try {
-          const response = await fetchHead(job.application_url);
-          if ((response.status >= 200 && response.status < 300) || isDefinitivelyClosedPostingStatus(response.status)) {
-            await run("UPDATE jobs SET last_verified_at=?, status=? WHERE id=?", [nowIso(), isDefinitivelyClosedPostingStatus(response.status) ? "expired" : "active", job.id]);
-          }
-        } catch {
-          // A timeout or network failure is not evidence that the posting closed.
-        }
-      }
+      await verifyActiveJobs(20);
       break;
     }
     case "daily-digest": {

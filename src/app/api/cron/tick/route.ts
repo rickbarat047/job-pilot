@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 import { all, get, parseJson, run } from "@/lib/db";
-import { processAutomationTasks } from "@/lib/automation";
+import { processAutomationTasks, verifyActiveJobs } from "@/lib/automation";
 import { runDiscovery } from "@/lib/discovery";
 import { logger } from "@/lib/logger";
 
@@ -115,6 +115,16 @@ export async function POST(request: Request) {
   }
 
   const hasMore = !cycleComplete && users.length === BATCH_SIZE;
+  // Verify jobs once per completed user cycle. The external scheduler may call
+  // this endpoint repeatedly to drain user batches, so running verification on
+  // every page of users would add redundant network work to a single run.
+  if (cycleComplete) {
+    try {
+      results.push({ jobVerification: true, ok: true, ...await verifyActiveJobs(20) });
+    } catch (error) {
+      results.push({ jobVerification: true, ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
   logger.info("Cron tick completed", { batch: users.length, processed: results.length, hasMore, cycleComplete });
   return NextResponse.json({ ok: true, batch: users.length, processed: results.length, hasMore, cursor: persistedCursor, results });
 }
