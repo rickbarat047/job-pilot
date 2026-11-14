@@ -21,6 +21,12 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (state !== "Applying") return;
+    const interval = window.setInterval(() => router.refresh(), 5000);
+    return () => window.clearInterval(interval);
+  }, [router, state]);
+
   async function run(name: string, body?: Record<string, unknown>, key = name) {
     setLoading(key);
     setMessage("");
@@ -118,7 +124,7 @@ export function ApplicationActions({ id, state, method, applicationUrl, approval
       {state === "Applying" && (
         <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
           <div className="font-medium">Browser automation is working</div>
-          <p className="mt-1 text-xs text-muted-foreground">This page refreshes automatically. If you complete the form yourself, confirm it below.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Status refreshes automatically while the worker runs. If you complete the form yourself, confirm it below.</p>
         </div>
       )}
 

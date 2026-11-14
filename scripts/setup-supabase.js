@@ -11,18 +11,46 @@ async function main() {
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
-  console.log("Connected to Postgres");
+  try {
+    console.log("Connected to Postgres");
 
-  await client.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;");
-  console.log("Reset public schema");
+    const migrationTable = await client.query("SELECT to_regclass('public.jobpilot_schema_migrations') AS name");
+    if (!migrationTable.rows[0]?.name) {
+      const existingTables = await client.query(
+        "SELECT COUNT(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'",
+      );
+      if (Number(existingTables.rows[0]?.count ?? 0) > 0) {
+        throw new Error("Refusing to initialize a populated database without JobPilot migration history. No changes were made; use the reviewed migrations for that database.");
+      }
+    }
 
-  for (const file of ["0001_schema.sql", "0002_rls.sql"]) {
-    const sql = fs.readFileSync(path.join("supabase", "migrations", file), "utf8");
-    await client.query(sql);
-    console.log(`Applied ${file}`);
+    await client.query(`CREATE TABLE IF NOT EXISTS public.jobpilot_schema_migrations (
+      name text PRIMARY KEY,
+      applied_at timestamptz NOT NULL DEFAULT now()
+    )`);
+
+    for (const file of ["0001_schema.sql", "0002_rls.sql"]) {
+      const applied = await client.query("SELECT 1 FROM public.jobpilot_schema_migrations WHERE name=$1", [file]);
+      if (applied.rowCount) {
+        console.log(`Already applied: ${file}`);
+        continue;
+      }
+
+      const sql = fs.readFileSync(path.join("supabase", "migrations", file), "utf8");
+      await client.query("BEGIN");
+      try {
+        await client.query(sql);
+        await client.query("INSERT INTO public.jobpilot_schema_migrations (name) VALUES ($1)", [file]);
+        await client.query("COMMIT");
+        console.log(`Applied ${file}`);
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      }
+    }
+  } finally {
+    await client.end();
   }
-
-  await client.end();
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

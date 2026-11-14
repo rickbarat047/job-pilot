@@ -7,13 +7,17 @@ import { logger } from "@/lib/logger";
 export const runtime = "nodejs";
 
 export async function GET() {
+  let databaseOk = false;
   try {
     await get("SELECT 1 as ok");
+    databaseOk = true;
+    const aiEnabled = isAIEnabled();
+    const workerOnline = await workerIsOnline();
     return NextResponse.json({
-      status: "ok",
+      status: aiEnabled && workerOnline ? "ok" : "degraded",
       database: "ok",
-      ai: isAIEnabled() ? "configured" : "fallback",
-      worker: (await workerIsOnline()) ? "online" : "offline",
+      ai: aiEnabled ? "configured" : "fallback",
+      worker: workerOnline ? "online" : "offline",
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -23,6 +27,6 @@ export async function GET() {
       { status: 503 },
     );
   } finally {
-    logger.info("Health check completed", { ok: true });
+    logger.info("Health check completed", { databaseOk });
   }
 }

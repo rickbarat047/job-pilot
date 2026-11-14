@@ -6,7 +6,9 @@ describe("health route", () => {
     const response = await GET();
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.status).toBe("ok");
     expect(body.database).toBe("ok");
+    expect(body.ai).toMatch(/^(configured|fallback)$/);
+    expect(body.worker).toMatch(/^(online|offline)$/);
+    expect(body.status).toBe(body.ai === "configured" && body.worker === "online" ? "ok" : "degraded");
   });
 });
