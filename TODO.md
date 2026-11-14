@@ -18,7 +18,8 @@
 - Application approval now enforces same-origin requests and records the state transition plus audit event atomically, with a concurrent-state check.
 - Health readiness now returns HTTP 503 when the database, AI provider, or browser worker is unavailable, with component details in the response body.
 - All cookie-authenticated application mutations now enforce same-origin requests; withdraw/reject/retry also save status and timeline events atomically with state-change checks.
-- Local verification: 40 test files / 208 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
+- Browser worker success, manual-intervention, retry, and failure callbacks now claim tasks and write related application history atomically to prevent duplicate events after concurrent callbacks.
+- Local verification: 40 test files / 211 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve
 

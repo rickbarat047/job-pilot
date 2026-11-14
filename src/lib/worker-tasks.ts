@@ -187,20 +187,26 @@ export async function recordWorkerResult(taskId: string, input: WorkerResultInpu
   const message = (input.message || "").slice(0, 4000);
 
   if (!applicationId) {
-    await run(
-      "UPDATE automation_tasks SET status='failed', last_error=?, locked_at=NULL, updated_at=? WHERE id=?",
-      [message || "Browser task has no application attached.", now, taskId],
-    );
-    return { ok: true, state: null, status: "failed" };
+    const recorded = await transaction(async (db) => {
+      const changed = await db.run(
+        "UPDATE automation_tasks SET status='failed', last_error=?, locked_at=NULL, updated_at=? WHERE id=? AND status='running'",
+        [message || "Browser task has no application attached.", now, taskId],
+      );
+      return affectedRows(changed) === 1;
+    });
+    return { ok: true, state: null, status: "failed", alreadyRecorded: !recorded };
   }
 
   const application = await get<Row>("SELECT id, state FROM applications WHERE id = ? AND user_id = ?", [applicationId, userId]);
   if (!application) {
-    await run(
-      "UPDATE automation_tasks SET status='failed', last_error='Application no longer exists.', locked_at=NULL, updated_at=? WHERE id=?",
-      [now, taskId],
-    );
-    return { ok: true, state: null, status: "failed" };
+    const recorded = await transaction(async (db) => {
+      const changed = await db.run(
+        "UPDATE automation_tasks SET status='failed', last_error='Application no longer exists.', locked_at=NULL, updated_at=? WHERE id=? AND status='running'",
+        [now, taskId],
+      );
+      return affectedRows(changed) === 1;
+    });
+    return { ok: true, state: null, status: "failed", alreadyRecorded: !recorded };
   }
 
   const fromState = String(application.state);
@@ -256,24 +262,36 @@ export async function recordWorkerResult(taskId: string, input: WorkerResultInpu
   }
 
   if (input.status === "manual_required") {
-    if (fromState === "Applying") {
-      await run(
-        "UPDATE applications SET state='Approved', last_event_at=?, updated_at=? WHERE id=? AND user_id=?",
-        [now, now, applicationId, userId],
+    const recorded = await transaction(async (db) => {
+      const currentTask = await db.get<Row>("SELECT status FROM automation_tasks WHERE id=?", [taskId]);
+      if (!currentTask || String(currentTask.status) !== "running") return false;
+      const currentApplication = await db.get<Row>("SELECT state FROM applications WHERE id=? AND user_id=?", [applicationId, userId]);
+      if (!currentApplication || !["Applying", "Approved"].includes(String(currentApplication.state))) {
+        throw new Error("Application state changed; the worker result was not recorded.");
+      }
+      const changed = await db.run(
+        "UPDATE automation_tasks SET status='manual_required', last_error=?, locked_at=NULL, updated_at=? WHERE id=? AND status='running'",
+        [message || "Manual completion required.", now, taskId],
       );
-      await run(
-        `INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at)
-         VALUES (?, ?, ?, 'application.browser_manual_required', 'Applying', 'Approved', ?, ?)`,
-        [newId("evt"), applicationId, userId, JSON.stringify({
-          message, finalUrl: input.finalUrl ?? null, fieldsFilled: input.fieldsFilled ?? [],
-          screenshotPath: input.screenshotPath ?? null,
-        }), now],
-      );
-    }
-    await run(
-      "UPDATE automation_tasks SET status='manual_required', last_error=?, locked_at=NULL, updated_at=? WHERE id=?",
-      [message || "Manual completion required.", now, taskId],
-    );
+      if (affectedRows(changed) !== 1) return false;
+      if (String(currentApplication.state) === "Applying") {
+        const updated = await db.run(
+          "UPDATE applications SET state='Approved', last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Applying'",
+          [now, now, applicationId, userId],
+        );
+        if (affectedRows(updated) !== 1) throw new Error("Application state changed; the worker result was not recorded.");
+        await db.run(
+          `INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at)
+           VALUES (?, ?, ?, 'application.browser_manual_required', 'Applying', 'Approved', ?, ?)`,
+          [newId("evt"), applicationId, userId, JSON.stringify({
+            message, finalUrl: input.finalUrl ?? null, fieldsFilled: input.fieldsFilled ?? [],
+            screenshotPath: input.screenshotPath ?? null,
+          }), now],
+        );
+      }
+      return true;
+    });
+    if (!recorded) return { ok: true, state: "Approved", status: "manual_required", alreadyRecorded: true };
     await createNotification(
       userId,
       "application",
@@ -288,29 +306,42 @@ export async function recordWorkerResult(taskId: string, input: WorkerResultInpu
   const maxAttempts = Number(task.max_attempts ?? 3) || 3;
   const terminal = attempts >= maxAttempts;
   const retryAt = new Date(Date.now() + Math.min(30, 2 ** Math.max(0, attempts)) * 60_000).toISOString();
+  const result = await transaction(async (db) => {
+    const currentTask = await db.get<Row>("SELECT status FROM automation_tasks WHERE id=?", [taskId]);
+    if (!currentTask || String(currentTask.status) !== "running") return null;
+    const currentApplication = await db.get<Row>("SELECT state FROM applications WHERE id=? AND user_id=?", [applicationId, userId]);
+    if (!currentApplication) throw new Error("Application no longer exists.");
 
-  if (fromState === "Applying") {
-    await run(
-      "UPDATE applications SET state=?, last_event_at=?, updated_at=? WHERE id=? AND user_id=?",
-      [terminal ? "Application Failed" : "Approved", now, now, applicationId, userId],
+    const nextTaskStatus = terminal ? "failed" : "queued";
+    const changed = await db.run(
+      "UPDATE automation_tasks SET status=?, next_run_at=?, last_error=?, locked_at=NULL, updated_at=? WHERE id=? AND status='running'",
+      [nextTaskStatus, terminal ? null : retryAt, message || "Browser automation failed.", now, taskId],
     );
-    await run(
-      `INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at)
-       VALUES (?, ?, ?, ?, 'Applying', ?, ?, ?)`,
-      [
-        newId("evt"), applicationId, userId,
-        terminal ? "application.browser_failed" : "application.browser_retry_scheduled",
-        terminal ? "Application Failed" : "Approved",
-        JSON.stringify({ message, finalUrl: input.finalUrl ?? null, screenshotPath: input.screenshotPath ?? null }),
-        now,
-      ],
-    );
-  }
+    if (affectedRows(changed) !== 1) return null;
 
-  await run(
-    "UPDATE automation_tasks SET status=?, next_run_at=?, last_error=?, locked_at=NULL, updated_at=? WHERE id=?",
-    [terminal ? "failed" : "queued", retryAt, message || "Browser automation failed.", now, taskId],
-  );
+    let nextApplicationState = String(currentApplication.state);
+    if (nextApplicationState === "Applying") {
+      nextApplicationState = terminal ? "Application Failed" : "Approved";
+      const updated = await db.run(
+        "UPDATE applications SET state=?, last_event_at=?, updated_at=? WHERE id=? AND user_id=? AND state='Applying'",
+        [nextApplicationState, now, now, applicationId, userId],
+      );
+      if (affectedRows(updated) !== 1) throw new Error("Application state changed; the worker result was not recorded.");
+      await db.run(
+        `INSERT INTO application_events (id, application_id, user_id, event_type, from_state, to_state, detail, created_at)
+         VALUES (?, ?, ?, ?, 'Applying', ?, ?, ?)`,
+        [
+          newId("evt"), applicationId, userId,
+          terminal ? "application.browser_failed" : "application.browser_retry_scheduled",
+          nextApplicationState,
+          JSON.stringify({ message, finalUrl: input.finalUrl ?? null, screenshotPath: input.screenshotPath ?? null }),
+          now,
+        ],
+      );
+    }
+    return { state: nextApplicationState, status: terminal ? "failed" : "retry_queued" };
+  });
+  if (!result) return { ok: true, state: fromState, status: terminal ? "failed" : "retry_queued", alreadyRecorded: true };
   await createNotification(
     userId,
     "application",
@@ -318,7 +349,7 @@ export async function recordWorkerResult(taskId: string, input: WorkerResultInpu
     terminal ? `${title} failed: ${message || "unknown error"}` : `${title} hit a temporary issue and will retry.`,
     `/applications/${applicationId}`,
   );
-  return { ok: true, state: terminal ? "Application Failed" : "Approved", status: terminal ? "failed" : "retry_queued" };
+  return { ok: true, ...result };
 }
 
 export async function workerTaskForApplication(userId: string, applicationId: string) {
