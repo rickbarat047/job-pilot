@@ -21,6 +21,7 @@ export function ApplicationReview({
   method,
   applicationUrl,
   questions,
+  provider,
   materials,
 }: {
   id: string;
@@ -28,6 +29,7 @@ export function ApplicationReview({
   method: string;
   applicationUrl: string;
   questions: Question[];
+  provider: "ai" | "deterministic";
   materials: {
     summary: string;
     coverLetterText: string;
@@ -60,7 +62,7 @@ export function ApplicationReview({
       <Card>
         <CardHeader><CardTitle>Review your application text</CardTitle></CardHeader>
         <CardContent>
-          <ApplicationMaterialsEditor applicationId={id} materials={materials} editable={editable} onDirtyChange={onMaterialsDirty} />
+          <ApplicationMaterialsEditor applicationId={id} materials={materials} provider={provider} editable={editable} onDirtyChange={onMaterialsDirty} />
         </CardContent>
       </Card>
       <Card>

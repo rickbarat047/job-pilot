@@ -88,6 +88,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             method={data.job.method}
             applicationUrl={data.job.applicationUrl}
             questions={data.questions}
+            provider={data.resume?.provider === "ai" ? "ai" : "deterministic"}
             materials={{
               summary: typeof data.resume?.content.summary === "string" ? data.resume.content.summary : "",
               coverLetterText: typeof data.coverLetter?.content.text === "string" ? data.coverLetter.content.text : "",

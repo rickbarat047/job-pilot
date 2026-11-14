@@ -476,7 +476,7 @@ export async function getApplicationDetail(userId: string, applicationId: string
     documents: documents.map((d) => ({ id: s(d.id), kind: s(d.kind), filename: s(d.filename), path: s(d.path), createdAt: s(d.created_at) })),
     questions: questions.map((q) => ({ id: s(q.id), question: s(q.question), answer: s(q.answer), requiresApproval: n(q.requires_approval) === 1, sensitive: n(q.sensitive) === 1, status: s(q.status) })),
     events: events.map((e) => ({ id: s(e.id), type: s(e.event_type), from: s(e.from_state) || null, to: s(e.to_state) || null, detail: s(e.detail), createdAt: s(e.created_at) })),
-    resume: resume ? { id: s(resume.id), title: s(resume.title), content: parseJson<Record<string, unknown>>(s(resume.content_json, "{}"), {}), pdf: s(resume.file_pdf_path) || null, docx: s(resume.file_docx_path) || null, notes: parseJson<string[]>(s(resume.customization_notes, "[]"), []) } : null,
+    resume: resume ? { id: s(resume.id), title: s(resume.title), provider: s(resume.provider, "deterministic"), content: parseJson<Record<string, unknown>>(s(resume.content_json, "{}"), {}), pdf: s(resume.file_pdf_path) || null, docx: s(resume.file_docx_path) || null, notes: parseJson<string[]>(s(resume.customization_notes, "[]"), []) } : null,
     coverLetter: cover ? { id: s(cover.id), title: s(cover.title), content: parseJson<Record<string, unknown>>(s(cover.content_json, "{}"), {}), pdf: s(cover.file_pdf_path) || null, docx: s(cover.file_docx_path) || null } : null,
     email: email ? { id: s(email.id), to: s(email.to_email), subject: s(email.subject), body: s(email.body), status: s(email.status), error: s(email.error) || null } : null,
     automation: browserTask ? {

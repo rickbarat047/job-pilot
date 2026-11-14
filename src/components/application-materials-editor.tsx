@@ -13,9 +13,10 @@ interface Materials {
   emailTo?: string;
 }
 
-export function ApplicationMaterialsEditor({ applicationId, materials, editable, onDirtyChange }: {
+export function ApplicationMaterialsEditor({ applicationId, materials, provider, editable, onDirtyChange }: {
   applicationId: string;
   materials: Materials;
+  provider: "ai" | "deterministic";
   editable: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
@@ -54,9 +55,15 @@ export function ApplicationMaterialsEditor({ applicationId, materials, editable,
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Read and edit the generated text before approval. Your listed experience, education, projects and skills remain based on your profile.
-      </p>
+      <div className="rounded-xl border border-border bg-muted/40 p-3">
+        <p className="text-sm font-medium">{provider === "ai" ? "AI-assisted draft" : "Profile-based draft"}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {provider === "ai"
+            ? "AI helped write this text. Check every claim against your profile and edit anything inaccurate before approval."
+            : "This text uses your profile and job details without AI-written wording. Check that it represents you well before approval."}
+          {" "}Your listed experience, education, projects and skills remain based on your profile.
+        </p>
+      </div>
       <div>
         <label htmlFor="resume-summary" className="text-sm font-medium">Resume summary</label>
         {editable ? (
