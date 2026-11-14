@@ -13,7 +13,8 @@
 - Recently improved: fair rotation of job-link verification, safe fallback for sites rejecting `HEAD`, account export and deletion behavior, ownership of new manual job imports, and explicit consent controls for automatic submission.
 - Himalayas source handling now honors its documented 20-item page limit, follows up to five cursor pages per discovery, excludes expired postings, and displays a visible source link on job cards and details.
 - Browser submission success callbacks now use an atomic state transition and safely return the recorded result on retries, preventing duplicate application history and notifications.
-- Local verification: 39 test files / 197 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
+- Match scores for postings with no skill evidence are capped at 60, described as uncertain, and no longer count a placeholder as a candidate strength.
+- Local verification: 39 test files / 198 tests pass; TypeScript typecheck passes; targeted ESLint and `git diff --check` pass.
 
 ## Launch blockers to resolve
 

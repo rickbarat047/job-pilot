@@ -35,6 +35,19 @@ describe("matchJob", () => {
     expect(result.strengths).toContain("CAD");
   });
 
+  it("caps a target-role posting with no description or skill evidence", () => {
+    const result = matchJob(profile, prefs, baseJob({
+      title: "Quality Engineer",
+      description: "",
+      skillsRequired: [],
+      postedAt: null,
+    }));
+
+    expect(result.overallScore).toBeLessThanOrEqual(60);
+    expect(result.recommendedAction).toMatch(/partial fit|low fit/i);
+    expect(result.explanation).toMatch(/not contain enough detail.*uncertain/i);
+  });
+
   it("disqualifies a role requiring a professional license", () => {
     const result = matchJob(profile, prefs, baseJob({ title: "Chartered Accountant", description: "Requires CA qualification and 3 years experience.", educationRequirements: "CA / ICWA", skillsRequired: ["Accounting"] }));
     expect(result.qualified).toBe(false);

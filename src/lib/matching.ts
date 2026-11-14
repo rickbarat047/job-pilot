@@ -140,7 +140,7 @@ function skillFit(profile: CandidateProfile, job: NormalizedJob): { score: numbe
   const candidate = profileSkillSet(profile);
   const jobSkills = job.skillsRequired.length ? job.skillsRequired : extractSkills(job.description, 20);
   if (jobSkills.length === 0) {
-    return { score: 0.55, strengths: ["No specific technical skills listed; generalist profile considered"], gaps: [], evaluated: 0 };
+    return { score: 0.55, strengths: [], gaps: [], evaluated: 0 };
   }
   const titleSkills = new Set(extractSkills(job.title, 10));
   let totalWeight = 0;
@@ -331,13 +331,15 @@ export function matchJob(profile: CandidateProfile, prefs: CandidatePreferences,
 
   // A role that lists skills and shares none of them (directly or through a
   // bridge) is not a strong fit, even if location, salary and freshness are
-  // perfect. A single loosely bridged skill is also thin evidence when the
-  // role is outside the candidate's preferred career families. Without these
-  // caps, unrelated remote roles such as "Freelance Writer" could score above
-  // 80 for an engineering profile.
+  // perfect. A missing skill description is also insufficient evidence for a
+  // high-confidence recommendation, even when the title matches a target role.
+  // A single loosely bridged skill is thin evidence outside preferred career
+  // families. Without these caps, unrelated or underspecified roles can score
+  // too highly for a candidate.
   const skillMismatch = skills.score === 0;
+  const noSkillEvidence = skills.evaluated === 0;
   const thinSkillEvidence = skills.evaluated <= 1 && career.score <= 0.72;
-  const relevanceCap = skillMismatch ? 45 : thinSkillEvidence ? 60 : 100;
+  const relevanceCap = skillMismatch ? 45 : noSkillEvidence || thinSkillEvidence ? 60 : 100;
   const finalScore = Math.max(0, Math.min(100, Math.round(Math.min(overall, relevanceCap))));
   const missingRequirements = dedupeStrings([
     ...skills.gaps.map((g) => `Skill gap: ${g}`),
@@ -356,7 +358,9 @@ export function matchJob(profile: CandidateProfile, prefs: CandidatePreferences,
     `${career.note}.`,
     skills.strengths.length
       ? `Your profile overlaps on ${skills.strengths.length} of ${job.skillsRequired.length || skills.strengths.length} detected skills, including ${skills.strengths.slice(0, 4).join(", ")}.`
-      : "No direct skill overlap was detected from the job description, so the match score is capped.",
+      : noSkillEvidence
+        ? "The posting does not contain enough detail to compare skills, so the match score is capped and should be treated as uncertain."
+        : "No direct skill overlap was detected from the job description, so the match score is capped.",
     education.notes[0] ? `${education.notes[0]}.` : "",
     experience.label ? `Experience requested: ${experience.label}; you have about ${candidateYears(profile)} year${candidateYears(profile) === 1 ? "" : "s"}.` : "",
     location.note ? `${location.note}.` : "",
