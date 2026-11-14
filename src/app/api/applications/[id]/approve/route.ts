@@ -3,12 +3,16 @@ import { requireApiUser } from "@/lib/auth";
 import { getApplicationDetail, getPermissionsForUser } from "@/lib/repositories";
 import { assertPermission } from "@/lib/permissions";
 import { canTransition } from "@/lib/permissions";
-import { getDb, newId, nowIso, run, get } from "@/lib/db";
+import { newId, nowIso, run } from "@/lib/db";
 
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireApiUser();
     const { id } = await context.params;
+    const body = await request.json().catch(() => ({}));
+    if (!body || typeof body !== "object" || Array.isArray(body) || body.reviewed !== true) {
+      return NextResponse.json({ error: "Review the application materials and answers, then confirm before approving." }, { status: 400 });
+    }
     const permissions = await getPermissionsForUser(user.id);
     assertPermission(permissions, "submit_application");
     const detail = await getApplicationDetail(user.id, id);
