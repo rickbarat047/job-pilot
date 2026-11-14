@@ -10,8 +10,8 @@ Improve and verify the real candidate journey: relevant and current jobs, truthf
 
 - Repository: `job-pilot`
 - Branch: `fix/candidate-application-safety`
-- HEAD before the current uncommitted search/checkpoint changes: `65a1cc8` (`Add JobPilot planning and verification workflow`)
-- The branch's last remotely confirmed SHA is `06a3666f16c761a78125b4aa5c60c4c31adb58d6`. Commits `1a3e0ce` and `65a1cc8` are local and have not been pushed.
+- HEAD: `e65c73f` (`Make production job search case-insensitive`)
+- The branch's last remotely confirmed SHA is `06a3666f16c761a78125b4aa5c60c4c31adb58d6`. Commits `1a3e0ce`, `65a1cc8`, and `e65c73f` are local and have not been pushed.
 - The latest push attempt could resolve GitHub but failed because Git Credential Manager/MSYS could not start (`NtCreateDirectoryObject ... 0xC0000022`); Git then had no username available. Do not rewrite history. Retry only through a working authenticated Git path.
 - OpenCode project guidance and `/jobpilot-plan` and `/jobpilot-verify` commands are committed at `65a1cc8`.
 
@@ -28,14 +28,12 @@ Checks run against this working change:
 - `git diff --check`: passed.
 - SQLite expression was exercised directly and matched mixed-case input containing escaped wildcard characters.
 - Build: blocked by Next.js/SWC on Windows failing to canonicalize the checkout path (`Access is denied`, OS error 5); this is the same environment-specific build failure recorded earlier.
-- This checkpoint and the `/continue` command are new uncommitted OpenCode handoff setup.
+- OpenCode continuation is configured through project instructions and the `/continue` command. The checkpoint is committed and should be updated after each verified work unit.
 
 ## Next concrete action
 
-1. Inspect the current diff and ensure the checkpoint still matches the actual worktree.
-2. If the current diff and checks remain correct, commit the search fix and OpenCode continuation setup on `fix/candidate-application-safety`.
-3. Retry publishing the feature branch only through an authenticated path that works; verify the remote SHA. Do not alter production.
-4. Continue the candidate-journey audit from the highest priority incomplete item in `TODO.md`; seek a supported CI/preview build path since local Next build is blocked by this Windows path error.
+1. Retry publishing the feature branch only through an authenticated path that works; verify the remote SHA. Do not alter production.
+2. Continue the candidate-journey audit from the highest priority incomplete item in `TODO.md`; seek a supported CI/preview build path since local Next build is blocked by this Windows path error.
 
 ## Production readiness evidence and blockers
 

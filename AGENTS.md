@@ -13,6 +13,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## How to work
 
 - For every non-trivial task, first inspect the current branch, working tree, relevant code, tests, and the matching project docs. State the user outcome, acceptance criteria, and a short ordered plan before editing. For routine, reversible code changes, continue through implementation and verification in the same task; do not stop after presenting a plan.
+- If the user says “continue” or “resume,” read `.opencode/JOBPILOT_CONTINUATION.md`, revalidate it against the actual checkout, and carry out its next concrete action. Do not return only a recap or another plan. The same workflow is available as the OpenCode `/continue` command.
 - Keep changes tied to the actual candidate journey: relevant and current jobs, honest candidate-specific materials, understandable consent and approvals, and dependable application tracking. Do not claim that JobPilot guarantees interviews or employment.
 - Prefer the smallest complete fix that meets the acceptance criteria. Add or update focused regression tests for confirmed defects; then run the existing full suite and static checks when the change warrants them.
 - Finish with evidence: summarize what changed, tests/checks and outcomes, current branch/commit, whether the change was pushed, and whether a preview or production deployment was actually verified. Never report an action as complete based only on intent.
