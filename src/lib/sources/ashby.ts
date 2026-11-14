@@ -1,6 +1,6 @@
 import type { JobSourceAdapter, NormalizedJob, SourceFetchContext, SourceFetchResult } from "../types";
 import { COMPANY_REGISTRY } from "../companies/registry";
-import { buildNormalizedJob, parseLocation } from "../normalize";
+import { buildNormalizedJob, isIndiaEligibleRemote, parseLocation } from "../normalize";
 import { fetchJson, mapWithConcurrency } from "./http";
 
 interface AshbyJob {
@@ -54,9 +54,11 @@ export const ashbyAdapter: JobSourceAdapter = {
           if (job.isListed === false) continue;
           const allLocations = [job.location ?? "", ...(job.secondaryLocations ?? [])];
           const locationText = allLocations.filter(Boolean).join(", ");
-          const india = allLocations.some((loc) => /india/i.test(loc));
-          const remoteGlobal = Boolean(job.isRemote) && /worldwide|global|anywhere|remote/i.test(locationText);
-          if (!india && !remoteGlobal) { localSkipped++; continue; }
+          const description = job.descriptionPlain ?? job.descriptionHtml ?? "";
+          const indiaLocation = allLocations.some((loc) => parseLocation(loc).country === "India");
+          const indiaEligible = isIndiaEligibleRemote(locationText, description);
+          const remoteEligible = Boolean(job.isRemote) && indiaEligible;
+          if (!(indiaLocation && indiaEligible) && !remoteEligible) { localSkipped++; continue; }
           if (localJobs.length >= PER_BOARD_LIMIT) break;
           localJobs.push(
             buildNormalizedJob({

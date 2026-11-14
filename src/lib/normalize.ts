@@ -160,6 +160,7 @@ export function isIndiaEligibleRemote(location: string, description = ""): boole
   if (worldwide) return true;
 
   if (/\bindia\b/.test(place)) return true;
+  if (parseLocation(place).country === "India") return true;
 
   const indiaSpecific = [
     /\bremote\b.{0,60}\b(?:in|from|within) india\b/,
