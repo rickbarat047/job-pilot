@@ -51,3 +51,6 @@ worker/.venv/
 coverage/
 
 .vercel
+
+# supabase CLI local state
+supabase/.temp/

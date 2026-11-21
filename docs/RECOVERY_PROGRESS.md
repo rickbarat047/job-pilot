@@ -98,10 +98,30 @@ No code defect remained. The worker implementation is correct and deployed. The 
 Code path verified: startup heartbeat, 401 handling, graceful shutdown, and exit code all behaved as designed. The worker is NOT permanently Online (scheduled one-shot worker; goes Offline between runs).
 
 ### Remaining issues
-- `WORKER_TOKEN` mismatch between GitHub Actions and Vercel production. This is the sole blocker preventing a successful run.
+- None outstanding for the browser worker. The `WORKER_TOKEN` mismatch was resolved by the user (token aligned across GitHub and Vercel); the `browser-worker.yml` workflow subsequently completed successfully.
 
 ### Required manual configuration
-- Variable name: `WORKER_TOKEN`
-- Location 1 (GitHub): Repository Settings → Secrets and variables → Actions → `WORKER_TOKEN` (used by `browser-worker.yml`).
-- Location 2 (Vercel): Project Settings → Environment Variables → `WORKER_TOKEN` (used by the app's `/api/automation/worker` endpoint via `verifyWorkerToken`).
-- Action: set the SAME value in both places. The current values differ (both return 401 against the other). Do not paste the value in chat; update both stores directly. After updating, re-run the `browser-worker.yml` workflow via workflow_dispatch to verify a 200 heartbeat and exit code 0.
+- None. (Historical note: `WORKER_TOKEN` previously differed between GitHub Actions and Vercel; this has been corrected and verified.)
+
+## Database Recovery Batch 1 (DB-001, DB-002, DB-007, DB-008, DB-012)
+
+Implemented fail-closed protection for database and storage providers in production, added the missing push_subscriptions Postgres migration (0003), made bootstrap idempotent for that table, and removed the destructive DROP SCHEMA from setup-supabase.js. Added 13 tests (db-config, storage-config, schema-consistency). All 69 tests pass; typecheck and build pass. Full details in docs/DB_RECOVERY_PROGRESS.md. No commit/push/deploy performed.
+
+## OpenCode recovery — Phase A: JP-003 (health check honesty)
+
+- Problem (from `docs/RECOVERY_AUDIT.md`): `/api/health` returned `status: "ok"` even with an
+  offline worker / AI fallback, and logged `ok: true` unconditionally in `finally`.
+- Fix: `src/app/api/health/route.ts` now probes database, authentication (sessions table),
+  storage provider, AI config, browser worker and email config; derives `status:
+  ok|degraded|error`; returns 503 only for an unavailable database (200 for degraded so
+  existing HTTP uptime checks are preserved); logs the real status.
+- Tests: updated the existing tracked `src/app/api/health/route.test.ts` assertion to the new
+  contract, added `src/app/api/health/route.degraded.test.ts` with 11 tests (pure status
+  derivation + mocked probe/HTTP/logging cases).
+- Verification: typecheck PASS; health tests 12/12; full suite 22 files / 129 passed /
+  3 skipped (was 21 / 118 / 3); `npm run build` PASS; live `GET /api/health` returned
+  HTTP 200 with `status: degraded`, `database: ok`, `worker: offline`.
+- Notes: Next.js 16.4.3 emits a one-time security-upgrade nudge on the first `next` command
+  after install; retry succeeds. No dependencies were changed. No commit/push/deploy.
+- Exact next task: JP-001 (`next lint` is invalid under Next.js 16) + JP-008 (CI does not run
+  the production build).
