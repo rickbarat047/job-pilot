@@ -77,9 +77,9 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
   authentication, storage, AI, worker and email config, derives `status: ok|degraded|error`,
   returns 503 only for a dead database, and logs the real status. Runtime check confirmed:
   HTTP 200, `{"status":"degraded","database":"ok","worker":"offline",...}`.
-- **JP-001** `package.json` `scripts.lint = "next lint"`: **fails** under Next.js 16
-  (`Invalid project directory ... /lint`, exit 1). No eslint dependency/config.
-- **JP-008** `.github/workflows/ci.yml`: runs typecheck + tests only, no build step.
+- **JP-001 / JP-008 — FIXED by remote PR #2** (merged `6c94643`, integrated into this push):
+  `package.json` now uses `eslint src` with `eslint.config.mjs`; CI now runs lint + build.
+  Verified locally: `npm run lint` exit 0 (0 errors, 26 pre-existing warnings), build PASS.
 - **JP-004/JP-014** `src/lib/ai/tailor.ts`, `src/app/api/profile/ai-assist-cv/route.ts`: silent
   deterministic fallback; swallowed AI errors (`catch {}`).
 - **DB-011** `src/lib/rate-limit.ts` `clientIp()` trusts `x-real-ip`/last `x-forwarded-for` entry.
@@ -118,9 +118,8 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
 ## F. Next steps (priority order)
 
 1. **JP-003 — DONE.** Component statuses + honest overall status + 11 new tests + runtime check.
-2. **JP-001 + JP-008** — replace broken `next lint` with a working ESLint command/config; add
-   `npm run build` to CI. Verify locally. *(next task)*
-3. **JP-004/JP-014** — surface deterministic AI fallback in UI/API, log swallowed errors.
+2. **JP-001 + JP-008 — DONE** by remote PR #2 (ESLint config + CI build step); verified locally.
+3. **JP-004/JP-014** — surface deterministic AI fallback in UI/API, log swallowed errors. *(next task)*
 4. **DB-011** — validate/derive client IP instead of trusting spoofable headers.
 5. **Operator-only (blocked here)** — production read-only checks, backup verification,
    apply migrations 0003/0004, commit/push/deploy per `DB_BATCH1_FINAL_APPROVAL.md`, then E2E A–J.
@@ -145,4 +144,13 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
   (11 tests). Verified: typecheck PASS; health tests 12/12; full suite 129 passed / 3 skipped
   (was 118/3); `npm run build` PASS; live GET /api/health HTTP 200 with degraded status and
   database ok. No commit/push/deploy; prior uncommitted work preserved.
-  **Exact next task:** JP-001 (broken `next lint`) + JP-008 (no build step in `ci.yml`).
+  **Exact next task at that point:** JP-001 (broken `next lint`) + JP-008 (no build step in `ci.yml`).
+- 2026-11-21 — GitHub push: created commits `36b03f7` (DB Batch 1) and `9fd30a7` (recovery +
+  JP-003). Initial push was rejected because remote `main` had advanced via PR #2; fetched,
+  merged `origin/main` (`04bedbd`, resolving the `db.ts` conflict in favor of
+  `resolveProvider()`), and pushed successfully. Verified merged tree: typecheck PASS,
+  lint exit 0 (0 errors / 26 warnings), 129 tests passed / 3 skipped, build PASS.
+  Local `HEAD` == `origin/main` == `04bedbd`, working tree clean.
+  **Exact next task now:** JP-004/JP-014 (honest AI fallback UI + error logging), then DB-011
+  (spoofable client IP). Operator-only production migration steps remain in
+  `docs/DB_BATCH1_FINAL_APPROVAL.md`.
