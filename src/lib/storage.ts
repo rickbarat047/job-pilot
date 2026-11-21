@@ -18,16 +18,29 @@ export function relativeStoragePath(absolutePath: string): string {
 }
 
 export function absoluteStoragePath(relativePath: string): string {
-  const resolved = path.resolve(storageRootPath(), relativePath);
-  if (!resolved.startsWith(storageRootPath())) throw new Error("Invalid storage path.");
+  const root = storageRootPath();
+  const resolved = path.resolve(root, relativePath);
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) throw new Error("Invalid storage path.");
   return resolved;
 }
 
-function supabaseStorage() {
+export function resolveStorageProvider(): "supabase" | "local" {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && key) return "supabase";
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are required in production. Local filesystem storage is not allowed in production.",
+    );
+  }
+  return "local";
+}
+
+function supabaseStorage() {
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || "jobpilot";
-  if (!url || !key) return null;
+  if (resolveStorageProvider() === "local") return null;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient } = require("@supabase/supabase-js");
   return { client: createClient(url, key), bucket };

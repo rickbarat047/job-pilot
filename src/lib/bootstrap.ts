@@ -89,6 +89,8 @@ export async function bootstrapDatabase(): Promise<void> {
   await run(
     `CREATE INDEX IF NOT EXISTS idx_company_reviews_company ON company_reviews(company_id)`
   );
+  // push_subscriptions is defined authoritatively by
+  // supabase/migrations/0003_push_subscriptions.sql. It is NOT duplicated here.
 }
 
 export async function ensureBootstrap(): Promise<void> {

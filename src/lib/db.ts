@@ -4,9 +4,25 @@ import { SCHEMA_SQL } from "./schema";
 
 export type DbProvider = "sqlite" | "postgres";
 
-let provider: DbProvider = process.env.DATABASE_URL || process.env.POSTGRES_URL ? "postgres" : "sqlite";
 let sqliteDb: any = null;
 let pgPool: any = null;
+
+/**
+ * Resolve the active database provider.
+ *
+ * In production (NODE_ENV=production) a persistent Postgres URL is mandatory:
+ * SQLite is never selected silently, because it would lose data on serverless
+ * platforms. In development/tests SQLite remains the default.
+ */
+export function resolveProvider(): DbProvider {
+  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) return "postgres";
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "DATABASE_URL or POSTGRES_URL is required in production. SQLite is not allowed in production.",
+    );
+  }
+  return "sqlite";
+}
 
 function resolveDbPath(): string {
   const configured = process.env.DATABASE_PATH || "./data/jobpilot.db";
@@ -45,9 +61,100 @@ function getPg() {
   return pgPool;
 }
 
-function toPgPlaceholders(sql: string): string {
+export function toPgPlaceholders(sql: string): string {
+  // Convert `?` placeholders to Postgres `$n` placeholders without touching
+  // question marks that appear inside SQL string literals, identifiers, or
+  // comments (which would otherwise corrupt the statement).
+  let result = "";
   let index = 0;
-  return sql.replace(/\?/g, () => `$${++index}`);
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const ch = sql[i];
+    // Line comment
+    if (ch === "-" && sql[i + 1] === "-") {
+      const end = sql.indexOf("\n", i);
+      if (end === -1) {
+        result += sql.slice(i);
+        i = n;
+        continue;
+      }
+      result += sql.slice(i, end + 1);
+      i = end + 1;
+      continue;
+    }
+    // Block comment
+    if (ch === "/" && sql[i + 1] === "*") {
+      const end = sql.indexOf("*/", i);
+      if (end === -1) {
+        result += sql.slice(i);
+        i = n;
+        continue;
+      }
+      result += sql.slice(i, end + 2);
+      i = end + 2;
+      continue;
+    }
+    // Single-quoted string literal (with '' escape)
+    if (ch === "'") {
+      let j = i + 1;
+      while (j < n) {
+        if (sql[j] === "'") {
+          if (sql[j + 1] === "'") {
+            j += 2;
+            continue;
+          }
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      if (j > n) j = n;
+      result += sql.slice(i, j);
+      i = j;
+      continue;
+    }
+    // Double-quoted identifier (with "" escape)
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < n) {
+        if (sql[j] === '"') {
+          if (sql[j + 1] === '"') {
+            j += 2;
+            continue;
+          }
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      if (j > n) j = n;
+      result += sql.slice(i, j);
+      i = j;
+      continue;
+    }
+    // Dollar-quoted string (Postgres)
+    if (ch === "$") {
+      const m = sql.slice(i).match(/^\$([A-Za-z_][A-Za-z0-9_]*)?\$/);
+      if (m) {
+        const tag = m[0];
+        const end = sql.indexOf(tag, i + tag.length);
+        if (end !== -1) {
+          result += sql.slice(i, end + tag.length);
+          i = end + tag.length;
+          continue;
+        }
+      }
+    }
+    if (ch === "?") {
+      result += `$${++index}`;
+      i += 1;
+      continue;
+    }
+    result += ch;
+    i += 1;
+  }
+  return result;
 }
 
 function normalizeParams(params: any[]): any[] {
@@ -55,7 +162,7 @@ function normalizeParams(params: any[]): any[] {
 }
 
 export function getProvider(): DbProvider {
-  return provider;
+  return resolveProvider();
 }
 
 export function nowIso(): string {
@@ -96,7 +203,7 @@ export function fromBoolInt(value: number | boolean | null | undefined): boolean
 
 export async function run(sql: string, params: (string | number | null | Uint8Array)[] = []): Promise<any> {
   const normalized = normalizeParams(params as any[]);
-  if (provider === "postgres") {
+  if (resolveProvider() === "postgres") {
     return getPg().query(toPgPlaceholders(sql), normalized);
   }
   const db = getSqlite();
@@ -105,7 +212,7 @@ export async function run(sql: string, params: (string | number | null | Uint8Ar
 
 export async function get<T = any>(sql: string, params: (string | number | null | Uint8Array)[] = []): Promise<T | undefined> {
   const normalized = normalizeParams(params as any[]);
-  if (provider === "postgres") {
+  if (resolveProvider() === "postgres") {
     const result = await getPg().query(toPgPlaceholders(sql), normalized);
     return result.rows[0] as T | undefined;
   }
@@ -115,7 +222,7 @@ export async function get<T = any>(sql: string, params: (string | number | null 
 
 export async function all<T = any>(sql: string, params: (string | number | null | Uint8Array)[] = []): Promise<T[]> {
   const normalized = normalizeParams(params as any[]);
-  if (provider === "postgres") {
+  if (resolveProvider() === "postgres") {
     const result = await getPg().query(toPgPlaceholders(sql), normalized);
     return result.rows as T[];
   }
@@ -124,7 +231,7 @@ export async function all<T = any>(sql: string, params: (string | number | null 
 }
 
 export async function exec(sql: string): Promise<void> {
-  if (provider === "postgres") {
+  if (resolveProvider() === "postgres") {
     await getPg().query(sql);
     return;
   }
@@ -152,7 +259,7 @@ export interface DbClient {
 }
 
 export async function transaction<T>(fn: (db: DbClient) => Promise<T>): Promise<T> {
-  if (provider === "postgres") {
+  if (resolveProvider() === "postgres") {
     const client = await getPg().connect();
     const tx: DbClient = {
       run: async (sql, params = []) => client.query(toPgPlaceholders(sql), normalizeParams(params)),
@@ -196,11 +303,11 @@ export async function transaction<T>(fn: (db: DbClient) => Promise<T>): Promise<
 }
 
 export function getDb(): any {
-  return provider === "postgres" ? getPg() : getSqlite();
+  return resolveProvider() === "postgres" ? getPg() : getSqlite();
 }
 
 export async function ensureSchema(): Promise<void> {
-  if (provider === "sqlite") {
+  if (resolveProvider() === "sqlite") {
     const db = getSqlite();
     // schema already applied in getSqlite
     void db;

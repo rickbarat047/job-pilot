@@ -13,8 +13,11 @@ async function main() {
   await client.connect();
   console.log("Connected to Postgres");
 
-  await client.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;");
-  console.log("Reset public schema");
+  // Do NOT drop the schema. Preserve existing tables and records.
+  await client.query("CREATE SCHEMA IF NOT EXISTS public;");
+  await client.query("GRANT ALL ON SCHEMA public TO postgres;");
+  await client.query("GRANT ALL ON SCHEMA public TO public;");
+  console.log("Ensured public schema (non-destructive)");
 
   for (const file of ["0001_schema.sql", "0002_rls.sql"]) {
     const sql = fs.readFileSync(path.join("supabase", "migrations", file), "utf8");
