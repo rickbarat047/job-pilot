@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type TransportOptions } from "nodemailer";
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from "node:crypto";
 import { get, run, nowIso, newId } from "./db";
 import { readFile } from "./storage";
@@ -67,7 +67,7 @@ export async function sendApplicationEmail(input: SendEmailInput): Promise<SendE
     return { ok: false, status: "simulated", error: "Demo mode is enabled; no email was sent.", emailId };
   }
 
-  let transportConfig: nodemailer.TransportOptions | null = null;
+  let transportConfig: TransportOptions | null = null;
   let from = process.env.SMTP_FROM || "JobPilot AI <no-reply@example.com>";
   if (hasIntegration) {
     const password = decryptSecret(String(row!.smtp_password_enc));
@@ -76,7 +76,7 @@ export async function sendApplicationEmail(input: SendEmailInput): Promise<SendE
       port: Number(row!.smtp_port || 587),
       secure: Number(row!.smtp_secure) === 1,
       auth: { user: String(row!.smtp_user), pass: password },
-    } as nodemailer.TransportOptions;
+    } as TransportOptions;
     if (row!.from_email) from = String(row!.from_email);
   } else if (envConfigured) {
     transportConfig = {
@@ -84,7 +84,7 @@ export async function sendApplicationEmail(input: SendEmailInput): Promise<SendE
       port: Number(process.env.SMTP_PORT || 587),
       secure: process.env.SMTP_SECURE === "true",
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
-    } as nodemailer.TransportOptions;
+    } as TransportOptions;
     if (process.env.SMTP_FROM) from = process.env.SMTP_FROM;
   }
 

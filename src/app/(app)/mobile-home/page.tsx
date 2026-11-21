@@ -50,7 +50,7 @@ export default function MobileHomePage() {
             </div>
             <div>
               <div className="text-sm font-semibold">{greeting}, {userName}👋</div>
-              <div className="text-xs text-gray-500">Let's move your career forward.</div>
+              <div className="text-xs text-gray-500">Let&apos;s move your career forward.</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -172,7 +172,7 @@ export default function MobileHomePage() {
             <span className="grid h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">J</span>
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">{greeting}, {userName}👋</span>
-              <div className="text-xs text-gray-500">Let's move your career forward.</div>
+              <div className="text-xs text-gray-500">Let&apos;s move your career forward.</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
