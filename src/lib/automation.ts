@@ -162,10 +162,24 @@ export async function updateWorkerHeartbeat(status: "online" | "offline", meta: 
   );
 }
 
+// The GitHub Actions scheduler runs this worker as a one-shot job every few
+// hours (often 4-8h in practice), not every 10 minutes. A 90-second freshness
+// window made the app report Offline for most of that interval and paused
+// auto-apply/browser submission. Treat the last heartbeat as fresh for a full
+// scheduled day unless an operator overrides the window.
+export const DEFAULT_WORKER_ONLINE_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+export function workerOnlineWindowMs(env: Record<string, string | undefined> = process.env): number {
+  const raw = env.WORKER_ONLINE_WINDOW_MS;
+  if (!raw) return DEFAULT_WORKER_ONLINE_WINDOW_MS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_WORKER_ONLINE_WINDOW_MS;
+}
+
 export async function workerIsOnline(): Promise<boolean> {
   const row = await get<{ status: string; last_heartbeat: string | null }>("SELECT status, last_heartbeat FROM worker_status WHERE id='playwright-worker'");
   if (!row || row.status !== "online" || !row.last_heartbeat) return false;
-  return Date.now() - new Date(row.last_heartbeat).getTime() < 90_000;
+  return Date.now() - new Date(row.last_heartbeat).getTime() < workerOnlineWindowMs();
 }
 
 

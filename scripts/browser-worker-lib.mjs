@@ -72,3 +72,17 @@ export function shouldFailWorkflowOnHttpStatus(status) {
   if (status >= 500) return true;
   return false;
 }
+
+// A one-shot worker is invoked by the scheduler, not kept alive. Posting an
+// offline heartbeat on every shutdown makes the app report Offline and pause
+// browser submissions for the whole interval between scheduled runs.
+export function shouldReportOfflineAtShutdown(isOneShot) {
+  return !isOneShot;
+}
+
+// A failed task claim means the worker could not do its job, regardless of the
+// HTTP status (including 400/422 and network errors). It must fail the run so
+// GitHub never shows a green check for work that was not done.
+export function isClaimFailure(err) {
+  return Boolean(err);
+}

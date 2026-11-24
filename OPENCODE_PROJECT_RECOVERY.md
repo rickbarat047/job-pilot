@@ -150,7 +150,32 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
   merged `origin/main` (`04bedbd`, resolving the `db.ts` conflict in favor of
   `resolveProvider()`), and pushed successfully. Verified merged tree: typecheck PASS,
   lint exit 0 (0 errors / 26 warnings), 129 tests passed / 3 skipped, build PASS.
-  Local `HEAD` == `origin/main` == `04bedbd`, working tree clean.
-  **Exact next task now:** JP-004/JP-014 (honest AI fallback UI + error logging), then DB-011
+  A final documentation commit `c9052d2` was then pushed; verified local `HEAD` ==
+  `origin/main` == `c9052d2`, working tree clean at that point.
+- 2026-11-22 — Browser worker investigation and fix (user request: "i checked on github it says
+  the browser worker is not working ..can you fix it for me please"). Root cause confirmed from
+  GitHub/Vercel evidence: the `WORKER_TOKEN` was rotated on 2026-11-14 at 10:13Z in both GitHub
+  Actions and Vercel, but the live Vercel deployment was built at 08:29Z with the OLD value, so
+  runs #43–#69 failed with `401 Invalid worker token.`. Our Nov 21 deployments picked up the
+  rotated env var and run #70 succeeded, so the red streak is already resolved. Two remaining
+  product issues fixed in code (user chose "Fix both"): (1) any failed task/result-post is now a
+  real CI failure and an empty queue is logged explicitly; (2) one-shot scheduled runs no longer
+  post an offline heartbeat, and `workerIsOnline()` now uses a configurable 12h window
+  (`WORKER_ONLINE_WINDOW_MS`) instead of 90 seconds, so browser apply is not paused between
+  GitHub's throttled 4–8h runs. Files: `scripts/browser-worker-lib.mjs`,
+  `scripts/browser-worker.mjs`, `src/lib/automation.ts`,
+  `src/lib/browser-worker.test.ts`, new `src/lib/automation.worker-online.test.ts`.
+  Verified TDD red→green; `npm test` 139 passed / 3 skipped (23 files); typecheck PASS; lint
+  0 errors / 26 pre-existing warnings; build PASS on retry (Next.js security nudge). No commit,
+  push, deploy, secret change, or production data change made for this fix.
+- 2026-11-24 — Next.js security upgrade (user: "no need to run in a separate worktree..use the
+  current one please..and when done please make sure all changes gets applied on the live site
+  and github also"). Duplicate checks: no equivalent local/remote branch or open PR (only PR #1,
+  Vercel Analytics). Upgraded `next` 16.4.3 → **16.4.6** (`package.json`, `package-lock.json`)
+  using the exact security-target version, and set `experimental.agentUpgrade: "security"` in
+  `next.config.ts`. Verified with Node 26.13.1: `next --version` 16.4.6; typecheck PASS;
+  139 tests passed / 3 skipped; lint 0 errors / 26 pre-existing warnings; build PASS with no
+  security nudge. Telemetry `report-agent-upgrade ... success` submitted.
+  **Exact next task:** JP-004/JP-014 (honest AI fallback UI + error logging), then DB-011
   (spoofable client IP). Operator-only production migration steps remain in
   `docs/DB_BATCH1_FINAL_APPROVAL.md`.

@@ -9,6 +9,8 @@ import {
   isCriticalHeartbeatFailure,
   shutdownExitCode,
   shouldFailWorkflowOnHttpStatus,
+  shouldReportOfflineAtShutdown,
+  isClaimFailure,
 } from "../../scripts/browser-worker-lib.mjs";
 
 describe("browser worker - env validation", () => {
@@ -85,6 +87,27 @@ describe("browser worker - http status handling", () => {
   it("does not flag 2xx/400 as workflow-failing", () => {
     expect(shouldFailWorkflowOnHttpStatus(200)).toBe(false);
     expect(shouldFailWorkflowOnHttpStatus(400)).toBe(false);
+  });
+});
+
+describe("browser worker - one-shot availability", () => {
+  it("keeps a scheduled one-shot worker online between runs", () => {
+    expect(shouldReportOfflineAtShutdown(true)).toBe(false);
+  });
+  it("marks a long-running worker offline when it shuts down", () => {
+    expect(shouldReportOfflineAtShutdown(false)).toBe(true);
+  });
+});
+
+describe("browser worker - claim failures", () => {
+  it("treats any claim error as a workflow failure", () => {
+    expect(isClaimFailure(createApiError(422, "POST", "/api/automation/worker/tasks/claim", "bad payload"))).toBe(true);
+    expect(isClaimFailure(createApiError(500, "POST", "/api/automation/worker/tasks/claim", "boom"))).toBe(true);
+    expect(isClaimFailure(new Error("network down"))).toBe(true);
+  });
+  it("does not treat an empty result as a claim failure", () => {
+    expect(isClaimFailure(null)).toBe(false);
+    expect(isClaimFailure(undefined)).toBe(false);
   });
 });
 

@@ -16,7 +16,7 @@
 //   BROWSER_TIMEOUT_MS     default 120000
 //   ONE_SHOT               if "1", process one task then exit
 
-import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, shouldFailWorkflowOnHttpStatus } from "./browser-worker-lib.mjs";
+import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, isClaimFailure, shouldReportOfflineAtShutdown } from "./browser-worker-lib.mjs";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 5000);
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 20000);
@@ -468,12 +468,13 @@ async function processOne() {
       console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
       process.exit(1);
     }
-    if (err && typeof err.status === "number" && shouldFailWorkflowOnHttpStatus(err.status)) {
-      throw err;
-    }
+    // Any claim error means no task was processed. Fail the run rather than
+    // reporting a false green check for a network error or 4xx response.
+    if (isClaimFailure(err)) throw err;
     return false;
   }
   if (isEmptyQueueResult(claimed)) {
+    console.log("queue empty; no tasks to process");
     return false; // empty queue is not an error
   }
   const taskPayload = claimed;
@@ -512,9 +513,9 @@ async function processOne() {
       console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
       process.exit(1);
     }
-    if (err && typeof err.status === "number" && shouldFailWorkflowOnHttpStatus(err.status)) {
-      throw err;
-    }
+    // Failing to report a completed task must also fail the run: the app would
+    // otherwise keep the task locked/running with no recorded outcome.
+    if (isClaimFailure(err)) throw err;
   }
   return true;
 }
@@ -554,12 +555,19 @@ async function main() {
         }
       }
       clearInterval(hb);
-      try {
-        await heartbeat("offline", meta);
-      } catch (err) {
-        if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
-        offlineHeartbeatFailed = true;
-        console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
+      if (shouldReportOfflineAtShutdown(ONE_SHOT)) {
+        try {
+          await heartbeat("offline", meta);
+        } catch (err) {
+          if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
+          offlineHeartbeatFailed = true;
+          console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
+        }
+      } else {
+        // GitHub's scheduler invokes this worker as a one-shot job every few
+        // hours. Leaving the startup "online" heartbeat in place keeps browser
+        // apply available between invocations; posting "offline" here pauses it.
+        console.log("one-shot run complete; leaving worker online for scheduled runs");
       }
       process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed, criticalHeartbeatFailed));
     }

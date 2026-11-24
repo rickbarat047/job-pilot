@@ -125,3 +125,53 @@ Implemented fail-closed protection for database and storage providers in product
   after install; retry succeeds. No dependencies were changed. No commit/push/deploy.
 - Exact next task: JP-001 (`next lint` is invalid under Next.js 16) + JP-008 (CI does not run
   the production build).
+
+## Browser worker GitHub failure — investigation and fix (2026-11-22)
+
+User report: "i checked on github it says the browser worker is not working ..can you fix it
+for me please".
+
+### Root cause (confirmed, not guessed)
+- Browser worker workflow (`407725335`) is active and ran 70 times. Runs #43 (2026-11-14T10:18Z)
+  through #69 all failed with `heartbeat failed POST /api/automation/worker -> 401:
+  {"error":"Invalid worker token."}`.
+- GitHub Actions `WORKER_TOKEN` secret was updated 2026-11-14T10:13:38Z; Vercel project env
+  `WORKER_TOKEN` was updated 2026-11-14T10:13:32Z. The live production deployment for PR #2
+  was created 2026-11-14T08:29:09Z — before the rotation — so the app validated the OLD token.
+- Our Nov 21 pushes created deployments at 17:32:26Z and 17:33:20Z, which picked up the rotated
+  env var. Run #70 (2026-11-21T18:15Z, commit `c9052d2`) succeeded. No new token is needed.
+- GitHub's scheduler is throttling the `*/10` cron to roughly 4–8 hour gaps. A successful run can
+  still mean "no tasks processed" because an empty queue exits 0 with no log line.
+
+### Fixes applied (user chose "Fix both")
+- `scripts/browser-worker-lib.mjs`: added `isClaimFailure()` (any claim/result-post error is a
+  failure) and `shouldReportOfflineAtShutdown()` (one-shot scheduled runs stay "online").
+- `scripts/browser-worker.mjs`: all claim/result-post errors now fail the workflow (previously
+  400/422/network errors were logged and treated as success); empty queue is logged explicitly;
+  one-shot runs skip the offline heartbeat so browser apply is not paused between runs.
+- `src/lib/automation.ts`: `workerIsOnline()` now uses a configurable freshness window
+  (`WORKER_ONLINE_WINDOW_MS`, default 12h) instead of a fixed 90 seconds.
+- Tests: added pure-helper tests to `src/lib/browser-worker.test.ts` and a new
+  `src/lib/automation.worker-online.test.ts`. Watched 8 tests fail for the expected reasons
+  before implementing; all 34 targeted tests pass after.
+
+### Verification
+- `npm test`: 23 files, 139 passed / 3 skipped.
+- `npm run typecheck`: PASS. `npm run lint`: 0 errors, 26 pre-existing warnings.
+- `npm run build`: PASS on retry (Next.js 16.4.3 security nudge on first run).
+- No commit/push/deploy, no secret changes, no production data changes. No secrets printed.
+
+## Next.js security upgrade in current checkout (2026-11-24)
+
+- User chose the current checkout (no separate worktree) and asked for all changes to be applied
+  on GitHub and the live site.
+- Duplicate checks: local branches `main`/`recovery/main`, all remote branches, and open PRs
+  checked with `gh`; only open PR is #1 (Vercel Analytics), no equivalent upgrade work. No
+  `next-upgrade:` markers found.
+- Upgraded Next.js `16.4.3` → `16.4.6` (exact security target) via `npm install next@16.4.6 --save`;
+  package.json now `^16.4.6`, lockfile regenerated with npm 11.20.0. Added
+  `experimental.agentUpgrade: "security"` to `next.config.ts`.
+- Verified with Node 26.13.1 / npm 11.20.0: `next --version` = 16.4.6; `npm run typecheck` PASS;
+  `npm test` 139 passed / 3 skipped (23 files); `npm run lint` 0 errors / 26 pre-existing
+  warnings; `npm run build` PASS on 16.4.6 with no security advisory nudge.
+- Reported successful upgrade via the Next.js agent-upgrade telemetry command.
