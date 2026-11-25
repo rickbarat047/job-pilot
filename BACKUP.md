@@ -95,10 +95,21 @@ pg_restore --exit-on-error --no-owner --no-acl \
 
 ## Verification evidence
 
-See `OPENCODE_PROJECT_RECOVERY.md` for the recorded local and GitHub Actions
-verification results. Production backup evidence depends on the manual secret
-configuration described above; the isolated restore job runs on every workflow
-invocation without production access.
+GitHub Actions run `45650808073` (commit `ddd0d6c`):
+
+- Client: `pg_dump (PostgreSQL) 18.7`; disposable server: `postgres:17`.
+- Real backup produced from a seeded PostgreSQL database:
+  `jobpilot-backup-2026-11-25T16-06-09-549Z.dump`, 74,647 bytes,
+  sha256 `017e6a343cf96c5c974d4847c573f7f7ce6fcb44665f9fe47f9d917ac5a58932`.
+- Isolated restore into a **different** database passed: all 13 essential tables,
+  the migration-added `push_subscriptions` table/index, all 13 row-count checks
+  (e.g. `users=1`, `candidate_profiles=1`, `push_subscriptions=1`), and clean
+  re-application of migrations `0001_schema.sql` and
+  `0003_push_subscriptions.sql`.
+- The production backup job in the same run failed closed because the
+  `DATABASE_URL` secret is not configured. This is the expected guard, not a
+  successful production backup. See `OPENCODE_PROJECT_RECOVERY.md` for the full
+  record.
 
 ## What changed from the old behaviour
 

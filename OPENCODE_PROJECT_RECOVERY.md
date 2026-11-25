@@ -191,4 +191,16 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
    TDD RED→GREEN for 28 tests (24 library + 4 CLI). Fresh local verification: `npm test`
    25 files / 167 passed / 3 skipped; typecheck PASS; lint 0 errors / 26 pre-existing
    warnings; build PASS with 5 pre-existing warnings. Code committed as `f9357cc` and
-   pushed for workflow validation. GitHub Actions evidence: **pending run result**.
+   pushed for workflow validation. GitHub Actions run `45650808073` (commit `ddd0d6c`)
+   produced real evidence: `pg_dump 18.7` backed up a seeded PostgreSQL database to
+   `jobpilot-backup-2026-11-25T16-06-09-549Z.dump` (74,647 bytes, sha256
+   `017e6a343cf96c5c974d4847c573f7f7ce6fcb44665f9fe47f9d917ac5a58932`), and the
+   isolated restore into a different `postgres:17` database passed all 13 essential
+   table checks, the migration-added `push_subscriptions` object, all 13 row-count
+   checks and clean re-application of migrations 0001 and 0003. Two CI-only fixes were
+   needed and verified: explicit `--dbname` for `pg_restore`, and aligning the disposable
+   server with the runner's newer `pg_dump` client. The production backup job correctly
+   failed closed because `DATABASE_URL` is still not a GitHub secret — **manual action
+   required before production backups can succeed**. Final local verification after all
+   changes: `npm test` 25 files / 168 passed / 3 skipped; typecheck PASS; lint 0 errors /
+   26 pre-existing warnings; `npm run build` exit 0.
