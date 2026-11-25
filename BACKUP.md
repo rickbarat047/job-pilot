@@ -73,6 +73,10 @@ node scripts/verify-backup.mjs \
   --manifest ./backups/jobpilot-backup-<timestamp>.dump.manifest.json
 ```
 
+Use a PostgreSQL server at least as new as the `pg_dump` client. Newer clients
+emit settings such as `SET transaction_timeout = 0` that older servers reject;
+the disposable verification job therefore uses `postgres:17`.
+
 Verification checks: pg_dump magic + size, `pg_restore -l` table of contents,
 essential tables from `supabase/migrations/0001_schema.sql` and
 `0003_push_subscriptions.sql`, row counts against the manifest, and clean

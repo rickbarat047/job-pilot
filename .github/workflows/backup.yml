@@ -27,6 +27,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Install dependencies
         run: npm ci
+      - name: Record PostgreSQL client version
+        run: pg_dump --version
       - name: Fail closed if the PostgreSQL secret is missing
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -55,7 +57,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: jobpilot
           POSTGRES_PASSWORD: verification-only
@@ -81,6 +83,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Install dependencies
         run: npm ci
+      - name: Record PostgreSQL client version
+        run: pg_dump --version
       - name: Create the disposable restore database
         run: psql -h 127.0.0.1 -U jobpilot -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE jobpilot_restore;"
       - name: Apply migrations and seed non-production test rows
