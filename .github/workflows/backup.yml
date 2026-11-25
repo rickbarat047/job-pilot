@@ -99,13 +99,13 @@ jobs:
           SQL
       - name: Back up the seeded source database
         env:
-          DATABASE_URL: ${{ env.TEST_SOURCE_URL }}
+          DATABASE_URL: postgres://jobpilot:verification-only@127.0.0.1:5432/jobpilot_source?sslmode=disable
           DATABASE_SSL: "false"
         run: node scripts/backup-db.mjs --out ./verify-backups
       - name: Restore into the disposable database and verify integrity
         env:
-          DATABASE_URL: ${{ env.TEST_SOURCE_URL }}
-          RESTORE_VERIFY_URL: ${{ env.TEST_RESTORE_URL }}
+          DATABASE_URL: postgres://jobpilot:verification-only@127.0.0.1:5432/jobpilot_source?sslmode=disable
+          RESTORE_VERIFY_URL: postgres://jobpilot:verification-only@127.0.0.1:5432/jobpilot_restore?sslmode=disable
           RESTORE_VERIFY: "1"
           NODE_ENV: test
         run: |

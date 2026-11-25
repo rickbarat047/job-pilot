@@ -179,3 +179,16 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
   **Exact next task:** JP-004/JP-014 (honest AI fallback UI + error logging), then DB-011
   (spoofable client IP). Operator-only production migration steps remain in
   `docs/DB_BATCH1_FINAL_APPROVAL.md`.
+ - 2026-11-25 — JP-015 (database backup and restore reliability). Root cause verified from
+   the weekly workflow logs and secret metadata: `DATABASE_URL` is not configured as a
+   GitHub Actions secret, and the old `scripts/backup-db.mjs` silently fell back to a
+   non-existent SQLite file. Production itself uses Supabase PostgreSQL (Vercel env
+   metadata only; no values read). Replaced the backup path with PostgreSQL-only helpers
+   (`scripts/backup-lib.mjs`), a secure `pg_dump` script (`scripts/backup-db.mjs`), an
+   isolated restore verifier (`scripts/verify-backup.mjs`) and a redesigned
+   `.github/workflows/backup.yml` with a fail-closed production job plus a disposable
+   Postgres service that seeds data, backs it up and restores it into a second database.
+   TDD RED→GREEN for 28 tests (24 library + 4 CLI). Fresh local verification: `npm test`
+   25 files / 167 passed / 3 skipped; typecheck PASS; lint 0 errors / 26 pre-existing
+   warnings; build PASS with 5 pre-existing warnings. Code committed as `f9357cc` and
+   pushed for workflow validation. GitHub Actions evidence: **pending run result**.
