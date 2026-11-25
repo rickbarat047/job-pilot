@@ -10,6 +10,7 @@ import {
   pruneExpiredBackups,
   assertSafeRestoreTarget,
   evaluateRestoreVerification,
+  buildRestoreArgs,
   REQUIRED_TABLES,
 } from "../../scripts/backup-lib.mjs";
 
@@ -166,6 +167,19 @@ describe("backup-lib - retention policy", () => {
     expect(pruneExpiredBackups(files, { nowMs, retentionDays: 30 })).toEqual([
       "jobpilot-backup-old.dump",
     ]);
+  });
+});
+
+describe("backup-lib - restore command", () => {
+  it("requires an explicit --dbname for pg_restore and never passes credentials", () => {
+    const args = buildRestoreArgs({
+      database: "jobpilot_restore",
+      file: "./backups/jobpilot-backup-test.dump",
+    });
+    expect(args).toContain("--dbname");
+    expect(args).toContain("jobpilot_restore");
+    expect(args.at(-1)).toBe("./backups/jobpilot-backup-test.dump");
+    expect(args.join(" ")).not.toMatch(/postgres(?:ql)?:\/\//);
   });
 });
 

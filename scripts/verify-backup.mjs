@@ -16,6 +16,7 @@ import { join } from "node:path";
 import {
   assertSafeRestoreTarget,
   buildPgEnv,
+  buildRestoreArgs,
   evaluateRestoreVerification,
   parseConnectionUrl,
   redactSecrets,
@@ -84,7 +85,7 @@ async function main() {
   psql(targetEnv, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
 
   console.log("Restoring backup into the isolated target...");
-  runBinary("pg_restore", ["--exit-on-error", "--no-owner", "--no-acl", file], targetEnv);
+  runBinary("pg_restore", buildRestoreArgs({ database: target.database, file }), targetEnv);
 
   const tableNames = psql(
     targetEnv,

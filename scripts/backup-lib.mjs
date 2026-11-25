@@ -267,6 +267,12 @@ export function pruneExpiredBackups(files, { nowMs = Date.now(), retentionDays =
     .map((file) => file.name);
 }
 
+/** pg_restore needs an explicit --dbname even when PGDATABASE is set. */
+/** @returns {string[]} */
+export function buildRestoreArgs({ database, file }) {
+  return ["--exit-on-error", "--no-owner", "--no-acl", "--dbname", database, file];
+}
+
 /** Refuse to restore into production or an unconfirmed target. */
 export function assertSafeRestoreTarget({ sourceUrl, targetUrl, nodeEnv, explicitOptIn }) {
   if (!explicitOptIn) {
