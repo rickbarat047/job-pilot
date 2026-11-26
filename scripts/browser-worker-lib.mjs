@@ -86,3 +86,33 @@ export function shouldReportOfflineAtShutdown(isOneShot) {
 export function isClaimFailure(err) {
   return Boolean(err);
 }
+
+/**
+ * Classify a browser submission attempt. Success is never inferred from the
+ * absence of an error: only explicit positive confirmation is acceptable.
+ */
+export function classifySubmissionResult({
+  successCount = 0,
+  errorCount = 0,
+  captchaDetected = false,
+  timeout = false,
+  clicked = false,
+  finalUrlChanged = false,
+} = {}) {
+  if (captchaDetected) {
+    return { status: "manual_required", reason: "captcha" };
+  }
+  if (successCount > 0) {
+    return { status: "applied", reason: "explicit-confirmation" };
+  }
+  if (errorCount > 0) {
+    return { status: "manual_required", reason: "form-validation-error" };
+  }
+  if (clicked) {
+    return {
+      status: "manual_required",
+      reason: timeout && finalUrlChanged ? "timeout-after-submit" : "no-confirmation",
+    };
+  }
+  return { status: "manual_required", reason: "unsubmitted" };
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Isolated test doubles for JP-016 E2E: a fake employer application page and a
-// deterministic OpenAI-compatible AI endpoint. Binds to localhost only.
+// Isolated test doubles for the JP-016/017 E2E harness: a fake employer site
+// that validates submissions and a deterministic OpenAI-compatible AI endpoint.
+// Binds to localhost only. Never contacts real employers, AI providers or email.
 
 import { createServer } from "node:http";
 
@@ -9,7 +10,7 @@ const host = "127.0.0.1";
 
 function json(res, status, body) {
   const payload = JSON.stringify(body);
-  res.writeHead(status, { "content-type": "application/json", "content-length": Buffer.byteLength(payload) });
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(payload) });
   res.end(payload);
 }
 
@@ -20,15 +21,15 @@ function html(res, body, status = 200) {
 
 const aiReply = {
   summary:
-    "Full-stack engineer with verified experience in Python, React and SQL. Builds reliable web applications, collaborates across product and engineering, and communicates clearly with stakeholders. Focused on practical, tested solutions for real users.",
+    "Verified experience with Python, React and SQL across academic and personal projects. Comfortable building and testing web applications, with honest attention to gaps and a focus on reliable, maintainable delivery for this role.",
   coverLetter:
-    "Dear Hiring Team, I am excited to apply for this role. My verified background includes Python, React and SQL, and I have used these skills to build and maintain dependable web applications. I work carefully, document decisions, and value clear collaboration with teammates. I would welcome the chance to contribute to your team and to learn from the challenges you are solving. Thank you for considering my application.",
+    "Thank you for considering my application for this position. My background includes verified work with Python, React and SQL, and I have built and tested small web applications that use these technologies together. I am careful to describe only work I have actually done, and I am keen to apply that discipline to the responsibilities described in your posting. The role's emphasis on dependable software matches the way I prefer to work: understand the requirement, implement it clearly, and verify the result. I would welcome the opportunity to discuss how my existing skills and my willingness to learn can contribute to your team. Thank you for your time and consideration.",
   recruiterEmail:
-    "Hello, I hope you are well. I am reaching out about the engineering opportunity at your company. My verified skills include Python, React and SQL, and I have applied them to practical web projects. I am interested in the role because it matches the kind of careful, user-focused engineering I enjoy. I would be glad to share more details and discuss how I can help. Thank you for your time.",
+    "Hello, I am writing to express my interest in this role. My verified experience covers Python, React and SQL, including small web applications built and tested end to end. I value clear requirements and careful verification, which is how I approach new work. I would be glad to share more detail about my projects and to learn more about the team's priorities. Thank you for your time.",
   questions: [
-    { question: "Why are you interested in this role?", answer: "The role matches my verified Python, React and SQL experience." },
-    { question: "What relevant experience do you bring?", answer: "I have built web applications using Python, React and SQL." },
-    { question: "What are your strongest skills for this role?", answer: "Python, React and SQL are my strongest verified skills." },
+    { question: "Why are you interested in this role?", answer: "The role matches my verified Python, React and SQL experience and my interest in reliable web application delivery." },
+    { question: "What relevant experience do you bring?", answer: "I have built and tested small applications using Python, React and SQL, and I describe only work I have actually done." },
+    { question: "What are your strongest skills for this role?", answer: "Python, React and SQL, together with careful verification of the work I deliver." },
   ],
 };
 
@@ -36,46 +37,68 @@ const server = createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${host}:${port}`);
 
   if ((url.pathname === "/chat/completions" || url.pathname === "/v1/chat/completions") && req.method === "POST") {
-    let body = "";
-    req.on("data", (chunk) => { body += chunk; });
+    let raw = "";
+    req.on("data", (chunk) => { raw += chunk; });
     req.on("end", () => {
       try {
-        const parsed = JSON.parse(body);
-        if (!parsed.model || !Array.isArray(parsed.messages)) return json(res, 400, { error: "invalid request" });
+        const parsed = JSON.parse(raw || "{}");
+        if (!parsed.model || !Array.isArray(parsed.messages)) {
+          json(res, 400, { error: "model and messages are required" });
+          return;
+        }
         json(res, 200, { choices: [{ message: { content: JSON.stringify(aiReply) } }] });
       } catch {
-        json(res, 400, { error: "invalid json" });
+        json(res, 400, { error: "invalid JSON" });
       }
     });
     return;
   }
 
   if (url.pathname.startsWith("/jobs/") && req.method === "GET") {
-    const id = url.pathname.split("/")[2] || "e2e-1";
+    const id = url.pathname.slice("/jobs/".length);
     html(
       res,
-      `<!doctype html><html lang="en"><head><title>Apply - Fixture Technologies</title></head>
-<body><h1>Software Engineer at Fixture Technologies</h1>
-<form method="post" action="/submit/${encodeURIComponent(id)}">
-  <label>Full name <input type="text" name="name" autocomplete="name" /></label>
-  <label>Email <input type="email" name="email" autocomplete="email" /></label>
-  <button type="submit">Submit application</button>
-</form></body></html>`,
+      `<!doctype html><html lang="en"><head><title>Apply</title></head><body><h1>Application for ${id}</h1><form method="post" action="/submit/${encodeURIComponent(id)}${url.search}"><label>Name <input type="text" name="name" required /></label><label>Email <input type="email" name="email" required /></label><button type="submit">Submit application</button></form></body></html>`,
     );
     return;
   }
 
   if (url.pathname.startsWith("/submit/") && req.method === "POST") {
-    html(
-      res,
-      `<!doctype html><html lang="en"><head><title>Confirmation</title></head>
-<body><h1>Thank you</h1><p>Your application has been submitted successfully.</p></body></html>`,
-    );
+    let raw = "";
+    req.on("data", (chunk) => { raw += chunk; });
+    req.on("end", () => {
+      const fields = new URLSearchParams(raw);
+      const name = (fields.get("name") || "").trim();
+      const email = (fields.get("email") || "").trim();
+      if (url.searchParams.get("ambiguous") === "1") {
+        html(
+          res,
+          `<!doctype html><html lang="en"><head><title>Form received</title></head><body><h1>Form received</h1><p>Your details have been saved for review.</p></body></html>`,
+        );
+        return;
+      }
+      if (!name || !email || !email.includes("@")) {
+        html(
+          res,
+          `<!doctype html><html lang="en"><head><title>Validation error</title></head><body><h1>Application not submitted</h1><p>Error: required field missing. Provide a valid name and email before submitting.</p></body></html>`,
+          400,
+        );
+        return;
+      }
+      html(
+        res,
+        `<!doctype html><html lang="en"><head><title>Confirmation</title></head><body><h1>Thank you</h1><p>Your application has been submitted successfully.</p></body></html>`,
+      );
+    });
     return;
   }
 
-  if (url.pathname === "/health") return json(res, 200, { ok: true });
-  json(res, 404, { error: "not found" });
+  if (url.pathname === "/health") {
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  json(res, 404, { error: "Not found" });
 });
 
 server.listen(port, host, () => {

@@ -16,7 +16,7 @@
 //   BROWSER_TIMEOUT_MS     default 120000
 //   ONE_SHOT               if "1", process one task then exit
 
-import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, isClaimFailure, shouldReportOfflineAtShutdown } from "./browser-worker-lib.mjs";
+import { validateEnv, buildHeartbeatBody, ApiError, createApiError, isEmptyQueueResult, isAuthFailure, isCriticalHeartbeatFailure, shutdownExitCode, isClaimFailure, shouldReportOfflineAtShutdown, classifySubmissionResult } from "./browser-worker-lib.mjs";
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 5000);
 const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS || 20000);
@@ -79,6 +79,17 @@ async function heartbeat(status = "online", meta = {}) {
       throw err;
     }
   }
+}
+
+// Availability is a lease, not a permanent flag. `processing:true` in a
+// heartbeat means a task is actively being claimed/worked; clearing it after
+// the task leaves an idle-but-fresh lease. A one-shot run never posts offline:
+// if the run crashes, the heartbeat goes stale and the app's lease expires.
+let processing = false;
+let criticalHeartbeatFailed = false;
+const baseMeta = { worker: "playwright", version: "2-ats-adapters", ats: "auto" };
+function heartbeatMeta() {
+  return { ...baseMeta, processing };
 }
 
 async function downloadDocument(doc, taskId, tmpDir) {
@@ -436,7 +447,9 @@ async function executeTask(taskPayload) {
       if (errorText > 0) {
         return { status: "manual_required", message: `${ats} adapter submitted but validation errors detected; manual review required.`, finalUrl, fieldsFilled, screenshotPath };
       }
-      return { status: "applied", message: `Submit clicked via ${ats} adapter; assumed success.`, finalUrl, fieldsFilled, screenshotPath };
+      // Never infer success from the absence of an error. Without explicit
+      // employer confirmation the outcome is uncertain and must be reviewed.
+      return { status: "manual_required", message: `Submit clicked via ${ats} adapter but no explicit confirmation was found; manual review required.`, finalUrl, fieldsFilled, screenshotPath };
     }
 
     return { status: "manual_required", message: `submit=false; form prepared via ${ats} adapter for manual completion.`, finalUrl, fieldsFilled, screenshotPath };
@@ -459,86 +472,102 @@ async function executeTask(taskPayload) {
 }
 
 async function processOne() {
-  let claimed;
+  // Report active work before the claim so a running task never looks idle.
+  // heartbeat() re-throws critical (401/404/5xx) failures, which fail the run.
+  processing = true;
   try {
-    claimed = await api("/api/automation/worker/tasks/claim", { method: "POST", body: { token: WORKER_TOKEN } });
-  } catch (err) {
-    console.error("claim failed", err instanceof Error ? err.message : err);
-    if (isAuthFailure(err)) {
-      console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
-      process.exit(1);
-    }
-    // Any claim error means no task was processed. Fail the run rather than
-    // reporting a false green check for a network error or 4xx response.
-    if (isClaimFailure(err)) throw err;
-    return false;
-  }
-  if (isEmptyQueueResult(claimed)) {
-    console.log("queue empty; no tasks to process");
-    return false; // empty queue is not an error
-  }
-  const taskPayload = claimed;
-  const taskId = taskPayload.task.id;
-  console.log("claimed task", taskId, taskPayload.job?.title, "@", taskPayload.job?.company, "ATS:", detectAts(taskPayload.job?.applicationUrl));
+    await heartbeat("online", heartbeatMeta());
 
-  let result;
-  try {
-    result = await executeTask(taskPayload);
-  } catch (err) {
-    result = {
-      status: "failed",
-      message: err instanceof Error ? err.message : String(err),
-      finalUrl: err?.finalUrl || "",
-      fieldsFilled: err?.fieldsFilled || [],
-      screenshotPath: err?.screenshotPath || null,
-    };
-  }
-
-  try {
-    await api(`/api/automation/worker/tasks/${encodeURIComponent(taskId)}/result`, {
-      method: "POST",
-      body: {
-        token: WORKER_TOKEN,
-        status: result.status,
-        message: result.message,
-        finalUrl: result.finalUrl,
-        fieldsFilled: result.fieldsFilled,
-        screenshotPath: result.screenshotPath,
-      },
-    });
-    console.log("reported", taskId, result.status);
-  } catch (err) {
-    console.error("result post failed", err instanceof Error ? err.message : err);
-    if (isAuthFailure(err)) {
-      console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
-      process.exit(1);
+    let claimed;
+    try {
+      claimed = await api("/api/automation/worker/tasks/claim", { method: "POST", body: { token: WORKER_TOKEN } });
+    } catch (err) {
+      console.error("claim failed", err instanceof Error ? err.message : err);
+      if (isAuthFailure(err)) {
+        console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
+        process.exit(1);
+      }
+      // Any claim error means no task was processed. Fail the run rather than
+      // reporting a false green check for a network error or 4xx response.
+      if (isClaimFailure(err)) throw err;
+      return false;
     }
-    // Failing to report a completed task must also fail the run: the app would
-    // otherwise keep the task locked/running with no recorded outcome.
-    if (isClaimFailure(err)) throw err;
+    if (isEmptyQueueResult(claimed)) {
+      console.log("queue empty; no tasks to process");
+      return false; // empty queue is not an error
+    }
+    const taskPayload = claimed;
+    const taskId = taskPayload.task.id;
+    console.log("claimed task", taskId, taskPayload.job?.title, "@", taskPayload.job?.company, "ATS:", detectAts(taskPayload.job?.applicationUrl));
+
+    let result;
+    try {
+      result = await executeTask(taskPayload);
+    } catch (err) {
+      result = {
+        status: "failed",
+        message: err instanceof Error ? err.message : String(err),
+        finalUrl: err?.finalUrl || "",
+        fieldsFilled: err?.fieldsFilled || [],
+        screenshotPath: err?.screenshotPath || null,
+      };
+    }
+
+    try {
+      await api(`/api/automation/worker/tasks/${encodeURIComponent(taskId)}/result`, {
+        method: "POST",
+        body: {
+          token: WORKER_TOKEN,
+          status: result.status,
+          message: result.message,
+          finalUrl: result.finalUrl,
+          fieldsFilled: result.fieldsFilled,
+          screenshotPath: result.screenshotPath,
+        },
+      });
+      console.log("reported", taskId, result.status);
+    } catch (err) {
+      console.error("result post failed", err instanceof Error ? err.message : err);
+      if (isAuthFailure(err)) {
+        console.error("Worker authentication failed (HTTP 401). Check WORKER_TOKEN.");
+        process.exit(1);
+      }
+      // Failing to report a completed task must also fail the run: the app would
+      // otherwise keep the task locked/running with no recorded outcome.
+      if (isClaimFailure(err)) throw err;
+    }
+    return true;
+  } finally {
+    processing = false;
+    // Clear processing on every clean/error path. No offline post: a crash just
+    // lets the lease expire, which is what staleness is for.
+    try {
+      await heartbeat("online", heartbeatMeta());
+    } catch (err) {
+      if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
+      console.error("processing-clear heartbeat failed", err instanceof Error ? err.message : err);
+    }
   }
-  return true;
 }
 
 async function main() {
   console.log(`JobPilot browser worker starting; polling ${APP_URL} every ${POLL_INTERVAL_MS}ms`);
-  const meta = { worker: "playwright", version: "2-ats-adapters", ats: "auto" };
 
-  let criticalHeartbeatFailed = false;
   let processingFailed = false;
   let offlineHeartbeatFailed = false;
 
-  // Startup heartbeat: fail clearly on auth/404/5xx (recorded, not swallowed).
+  // Startup heartbeat: online but idle. Fail clearly on auth/404/5xx.
   try {
-    await heartbeat("online", meta);
+    await heartbeat("online", heartbeatMeta());
   } catch (err) {
     criticalHeartbeatFailed = true;
     console.error("startup heartbeat failed", err instanceof Error ? err.message : err);
   }
 
-  // Periodic heartbeats: record failures, never unhandled rejections.
+  // Periodic heartbeats refresh the lease and reflect current processing state;
+  // record failures, never unhandled rejections.
   const hb = setInterval(() => {
-    heartbeat("online", meta).catch((err) => {
+    heartbeat("online", heartbeatMeta()).catch((err) => {
       if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
       console.error("periodic heartbeat failed", err instanceof Error ? err.message : err);
     });
@@ -551,23 +580,25 @@ async function main() {
           await processOne();
         } catch (err) {
           processingFailed = true;
+          if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
           console.error("processing failed", err instanceof Error ? err.message : err);
         }
       }
       clearInterval(hb);
       if (shouldReportOfflineAtShutdown(ONE_SHOT)) {
         try {
-          await heartbeat("offline", meta);
+          await heartbeat("offline", heartbeatMeta());
         } catch (err) {
           if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
           offlineHeartbeatFailed = true;
           console.error("offline heartbeat failed", err instanceof Error ? err.message : err);
         }
       } else {
-        // GitHub's scheduler invokes this worker as a one-shot job every few
-        // hours. Leaving the startup "online" heartbeat in place keeps browser
-        // apply available between invocations; posting "offline" here pauses it.
-        console.log("one-shot run complete; leaving worker online for scheduled runs");
+        // No offline post for a one-shot run: the last heartbeat is an idle
+        // online lease that expires on its own (30m by default) if GitHub does
+        // not schedule another run. Posting offline here would falsely report
+        // unavailability while the next scheduled run is simply pending.
+        console.log("one-shot run complete; leaving an idle lease to expire if not renewed");
       }
       process.exit(shutdownExitCode(processingFailed, offlineHeartbeatFailed, criticalHeartbeatFailed));
     }
@@ -578,6 +609,7 @@ async function main() {
         hadWork = await processOne();
       } catch (err) {
         processingFailed = true;
+        if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
         console.error("processing failed", err instanceof Error ? err.message : err);
         break;
       }
@@ -592,7 +624,7 @@ async function main() {
 
   // Graceful shutdown: offline heartbeat must not conceal earlier failures.
   try {
-    await heartbeat("offline", meta);
+    await heartbeat("offline", heartbeatMeta());
   } catch (err) {
     if (isCriticalHeartbeatFailure(err)) criticalHeartbeatFailed = true;
     offlineHeartbeatFailed = true;

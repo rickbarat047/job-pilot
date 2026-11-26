@@ -56,3 +56,12 @@ Ports can be overridden with `E2E_APP_PORT`, `E2E_STUB_PORT`, `E2E_DB_PORT`,
 `.github/workflows/e2e.yml` runs on manual dispatch and weekly, using a
 `postgres:17` service and Playwright browser installation. See
 `OPENCODE_PROJECT_RECOVERY.md` for recorded run evidence.
+
+## JP-017 reliability updates (2026-11-26)
+
+- Fake employer now validates submitted `name`/`email`; invalid POST returns HTTP 400 with `Error: required field missing` and no confirmation. An `ambiguous=1` job returns a neutral "Form received" page (no explicit success/error text) and must end as `manual_required`, never Applied.
+- Worker result classification is explicit: applied only on positive confirmation; CAPTCHA, validation errors, no submit button, timeout after click and unknown pages map to `manual_required`/`failed`.
+- Duplicate worker callbacks are idempotent via a transactional conditional task-status gate; the E2E suite asserts the duplicate is reported and emits no second `application.submitted_browser` event.
+- Worker availability is a 30-minute lease derived from the 10-minute schedule plus job timeout and grace; GET `/api/automation/worker` reports `online`, `recentlySeen`, `processing` and `leaseExpiresAt`. Heartbeats accept both Postgres Date and SQLite string timestamps.
+- CI gate: `.github/workflows/e2e.yml` runs on pushes and pull requests to `main` (plus the weekly schedule) and uploads screenshot/log evidence on failure.
+- Latest result: `npm run test:e2e` 30/30 checks passed on disposable Postgres with localhost fixtures only.

@@ -13,7 +13,7 @@
     "companyName": "Fixture Systems",
     "descriptionText": "Work with Python and SQL on backend services in Bengaluru. Full-time role.",
     "location": "Bengaluru, India",
-    "applicationUrl": "http://127.0.0.1:4599/jobs/e2e-2"
+    "applicationUrl": "http://127.0.0.1:4599/jobs/e2e-2?ambiguous=1"
   },
   {
     "sourceJobId": "e2e-3",

@@ -108,6 +108,28 @@ async function main() {
     E2E_STUB_PORT: String(STUB_PORT),
   });
   await waitFor(`${STUB_URL}/health`);
+  const invalidSubmit = await fetch(`${STUB_URL}/submit/check`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "name=&email=",
+  });
+  const invalidBody = await invalidSubmit.text();
+  check(
+    "fake employer rejects incomplete form",
+    invalidSubmit.status === 400 && invalidBody.includes("Error: required field missing") && !invalidBody.includes("Thank you"),
+    String(invalidSubmit.status),
+  );
+  const validSubmit = await fetch(`${STUB_URL}/submit/check`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "name=Test+User&email=test%40example.test",
+  });
+  const validBody = await validSubmit.text();
+  check(
+    "fake employer confirms valid form",
+    validSubmit.status === 200 && validBody.includes("Thank you"),
+    String(validSubmit.status),
+  );
 
   start("app", process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", String(APP_PORT)], {
     NODE_ENV: "development",
@@ -263,8 +285,17 @@ async function main() {
     `SELECT count(*)::int AS n FROM application_events WHERE application_id=$1 AND event_type='application.submitted_browser'`,
     [applicationId],
   );
-  check("duplicate worker result accepted (known non-idempotent behaviour)", duplicate.status === 200, String(duplicate.status));
-  console.log(`  INFO duplicate result changed submit-event count ${before.rows[0].n} -> ${after.rows[0].n}`);
+  check(
+    "duplicate callback is reported as already recorded",
+    duplicate.status === 200 &&
+      (duplicate.json?.duplicate === true || duplicate.json?.status === "duplicate"),
+    JSON.stringify(duplicate.json ?? {}),
+  );
+  check(
+    "duplicate result does not emit duplicate events",
+    after.rows[0].n === before.rows[0].n,
+    `${before.rows[0].n} -> ${after.rows[0].n}`,
+  );
 
   const corruptPath = join(maildir, "corrupt-fixtures.json");
   writeFileSync(corruptPath, "{not valid json");

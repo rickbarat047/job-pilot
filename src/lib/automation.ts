@@ -162,12 +162,18 @@ export async function updateWorkerHeartbeat(status: "online" | "offline", meta: 
   );
 }
 
-// The GitHub Actions scheduler runs this worker as a one-shot job every few
-// hours (often 4-8h in practice), not every 10 minutes. A 90-second freshness
-// window made the app report Offline for most of that interval and paused
-// auto-apply/browser submission. Treat the last heartbeat as fresh for a full
-// scheduled day unless an operator overrides the window.
-export const DEFAULT_WORKER_ONLINE_WINDOW_MS = 12 * 60 * 60 * 1000;
+/**
+ * Lease duration for the Playwright worker's "online" heartbeat.
+ *
+ * The browser-worker workflow schedules a one-shot job every 10 minutes and
+ * allows each run up to 10 minutes (timeout-minutes). A healthy heartbeat plus
+ * runtime and a grace allowance therefore justifies 30 minutes — 3x the
+ * schedule interval — not 12 hours. GitHub may throttle scheduled runs to
+ * 4-8h; when that happens the lease expires and the worker correctly shows as
+ * stale instead of pretending a crashed worker is still available. Operators
+ * can widen/narrow the lease with WORKER_ONLINE_WINDOW_MS (positive finite ms).
+ */
+export const DEFAULT_WORKER_ONLINE_WINDOW_MS = 30 * 60 * 1000;
 
 export function workerOnlineWindowMs(env: Record<string, string | undefined> = process.env): number {
   const raw = env.WORKER_ONLINE_WINDOW_MS;
@@ -176,10 +182,79 @@ export function workerOnlineWindowMs(env: Record<string, string | undefined> = p
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_WORKER_ONLINE_WINDOW_MS;
 }
 
+export interface WorkerStatusSnapshot {
+  /** Raw status stored by the worker ("online" or "offline"). */
+  status: string;
+  /** Raw last heartbeat timestamp, or null when the worker was never seen. */
+  lastHeartbeat: string | null;
+  meta: Record<string, unknown>;
+  /** True only for an unexpired, non-future "online" lease. */
+  online: boolean;
+  /** A parseable heartbeat exists, regardless of status or freshness. */
+  recentlySeen: boolean;
+  /** Actively processing: requires a live lease AND meta.processing === true. */
+  processing: boolean;
+  /** When the current lease expires, or null when there is no usable lease. */
+  leaseExpiresAt: string | null;
+}
+
+function parseWorkerMeta(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value !== "string" || !value) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function heartbeatTimestampMs(value: unknown): number {
+  // Schema drift is real: src/lib/schema.ts stores last_heartbeat as TEXT
+  // (SQLite returns an ISO string), while supabase/migrations/0001_schema.sql
+  // uses timestamptz (node-postgres returns a Date). Accept both so a freshly
+  // posted heartbeat is online on either provider.
+  if (value instanceof Date) return value.getTime();
+  if (typeof value !== "string" || !value) return Number.NaN;
+  return Date.parse(value);
+}
+
+/**
+ * Single source of truth for worker availability: distinguishes a fresh lease
+ * ("online") from merely having heard from the worker ("recentlySeen") and from
+ * actively running a task ("processing"). A stale heartbeat that still says
+ * processing:true is crash evidence, not active work.
+ */
+export async function workerStatusSnapshot(): Promise<WorkerStatusSnapshot> {
+  const row = await get<{ status?: string; last_heartbeat?: string | Date | null; meta?: unknown }>(
+    "SELECT status, last_heartbeat, meta FROM worker_status WHERE id='playwright-worker'",
+  );
+  const status = typeof row?.status === "string" ? row.status : "offline";
+  const meta = parseWorkerMeta(row?.meta);
+
+  const heartbeatMs = heartbeatTimestampMs(row?.last_heartbeat);
+  const recentlySeen = Number.isFinite(heartbeatMs);
+  // Normalize to ISO so GET returns the same shape on SQLite and Postgres.
+  const lastHeartbeat = recentlySeen ? new Date(heartbeatMs).toISOString() : null;
+  const ageMs = Date.now() - heartbeatMs;
+  const windowMs = workerOnlineWindowMs();
+  // A future-dated heartbeat (clock skew) must not extend the lease, and an
+  // explicit offline status ends it immediately.
+  const online = status === "online" && recentlySeen && ageMs >= 0 && ageMs < windowMs;
+  const processing = online && meta.processing === true;
+  const leaseExpiresAt = status === "online" && recentlySeen && ageMs >= 0
+    ? new Date(heartbeatMs + windowMs).toISOString()
+    : null;
+
+  return { status, lastHeartbeat, meta, online, recentlySeen, processing, leaseExpiresAt };
+}
+
 export async function workerIsOnline(): Promise<boolean> {
-  const row = await get<{ status: string; last_heartbeat: string | null }>("SELECT status, last_heartbeat FROM worker_status WHERE id='playwright-worker'");
-  if (!row || row.status !== "online" || !row.last_heartbeat) return false;
-  return Date.now() - new Date(row.last_heartbeat).getTime() < workerOnlineWindowMs();
+  return (await workerStatusSnapshot()).online;
+}
+
+export async function workerIsProcessing(): Promise<boolean> {
+  return (await workerStatusSnapshot()).processing;
 }
 
 

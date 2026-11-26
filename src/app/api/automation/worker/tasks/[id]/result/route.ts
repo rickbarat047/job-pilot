@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { recordWorkerResult, type WorkerTaskStatus } from "@/lib/worker-tasks";
+import { recordWorkerResult, type WorkerTaskStatus } from "@/lib/worker-result";
 import { verifyWorkerToken } from "@/lib/worker-auth";
 
 export const runtime = "nodejs";

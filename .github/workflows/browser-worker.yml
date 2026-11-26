@@ -37,4 +37,11 @@ jobs:
           HEADLESS: "true"
           ONE_SHOT: "1"
           POLL_INTERVAL_MS: "1000"
+          # Worker availability lease: the schedule is every 10 minutes and a
+          # run may take up to 10 minutes (timeout-minutes above), so a healthy
+          # heartbeat plus grace justifies 30 minutes = 3x the interval. After
+          # that a heartbeat is stale; one-shot runs never post offline, so a
+          # crashed/throttled run stops looking online on its own. Keep this in
+          # sync with WORKER_ONLINE_WINDOW_MS on the app.
+          WORKER_ONLINE_WINDOW_MS: "1800000"
         run: node scripts/browser-worker.mjs

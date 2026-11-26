@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
-import { updateWorkerHeartbeat, workerIsOnline } from "@/lib/automation";
-import { get, parseJson } from "@/lib/db";
+import { updateWorkerHeartbeat, workerStatusSnapshot } from "@/lib/automation";
 import { verifyWorkerToken } from "@/lib/worker-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// One snapshot keeps online/recentlySeen/processing consistent for a single
+// response; the legacy fields (status, lastHeartbeat, online, meta) are kept
+// for existing consumers.
 export async function GET() {
-  const row = await get<{ status: string; last_heartbeat: string | null; meta: string }>("SELECT status, last_heartbeat, meta FROM worker_status WHERE id='playwright-worker'");
+  const snapshot = await workerStatusSnapshot();
   return NextResponse.json({
-    status: row?.status ?? "offline",
-    lastHeartbeat: row?.last_heartbeat ?? null,
-    online: await workerIsOnline(),
-    meta: parseJson<Record<string, unknown>>(row?.meta, {}),
+    status: snapshot.status,
+    lastHeartbeat: snapshot.lastHeartbeat,
+    online: snapshot.online,
+    meta: snapshot.meta,
+    recentlySeen: snapshot.recentlySeen,
+    processing: snapshot.processing,
+    leaseExpiresAt: snapshot.leaseExpiresAt,
   });
 }
 
