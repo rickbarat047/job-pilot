@@ -12,13 +12,16 @@ export function validateEnv(env) {
   return { ok: errors.length === 0, errors };
 }
 
-export function buildHeartbeatBody(status, meta = {}, token) {
+export function buildHeartbeatBody(status, meta = {}) {
   if (!WORKER_STATUSES.includes(status)) {
     throw new Error(`Invalid worker status: ${status}. Expected one of ${WORKER_STATUSES.join(", ")}.`);
   }
   // status is a TOP-LEVEL property; meta is separate and must not contain the status.
   const body = { status, meta: meta && typeof meta === "object" ? { ...meta } : {} };
-  if (token !== undefined) body.token = token;
+  // The worker token is a credential and must only travel in the
+  // x-worker-token header. Never serialize it into the JSON body, even if a
+  // caller passes a legacy argument or puts a token inside meta.
+  delete body.meta.token;
   // Never let a nested status override the top-level one.
   delete body.meta.status;
   return body;

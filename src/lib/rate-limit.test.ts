@@ -45,8 +45,15 @@ describe("rate limiting", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("prefers x-real-ip for client identification", () => {
-    const request = new Request("http://localhost", { headers: { "x-real-ip": "203.0.113.10", "x-forwarded-for": "198.51.100.1" } });
-    expect(clientIp(request)).toBe("203.0.113.10");
+  it("prefers x-real-ip only when proxy headers are trusted", () => {
+    const previous = process.env.TRUST_PROXY_HEADERS;
+    process.env.TRUST_PROXY_HEADERS = "1";
+    try {
+      const request = new Request("http://localhost", { headers: { "x-real-ip": "203.0.113.10", "x-forwarded-for": "198.51.100.1" } });
+      expect(clientIp(request)).toBe("203.0.113.10");
+    } finally {
+      if (previous === undefined) delete process.env.TRUST_PROXY_HEADERS;
+      else process.env.TRUST_PROXY_HEADERS = previous;
+    }
   });
 });

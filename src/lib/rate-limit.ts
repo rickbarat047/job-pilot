@@ -5,21 +5,44 @@ type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
 
+/** Upper bound on in-memory buckets so unbounded keys cannot grow the map forever. */
+export const RATE_LIMIT_MAX_BUCKETS = 1000;
+
 export interface RateLimitResult {
   ok: boolean;
   retryAfter: number;
   unavailable?: boolean;
 }
 
-function localCheckRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
-  const now = Date.now();
-  if (buckets.size > 1000) {
-    for (const [bucketKey, bucket] of buckets) {
-      if (bucket.resetAt <= now) buckets.delete(bucketKey);
+function pruneExpired(now: number): void {
+  for (const [bucketKey, bucket] of buckets) {
+    if (bucket.resetAt <= now) buckets.delete(bucketKey);
+  }
+}
+
+function evictOldest(): void {
+  // Deterministic: earliest expiry first, then insertion order (Map iteration order).
+  let oldestKey: string | null = null;
+  let oldestResetAt = Infinity;
+  for (const [bucketKey, bucket] of buckets) {
+    if (bucket.resetAt < oldestResetAt) {
+      oldestKey = bucketKey;
+      oldestResetAt = bucket.resetAt;
     }
   }
+  if (oldestKey !== null) buckets.delete(oldestKey);
+}
+
+export function rateLimitBucketCount(): number {
+  return buckets.size;
+}
+
+function localCheckRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
+  const now = Date.now();
+  pruneExpired(now);
   const existing = buckets.get(key);
   if (!existing || existing.resetAt <= now) {
+    if (buckets.size >= RATE_LIMIT_MAX_BUCKETS) evictOldest();
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return { ok: true, retryAfter: 0 };
   }
@@ -77,7 +100,15 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
   return localCheckRateLimit(key, limit, windowMs);
 }
 
+function trustProxyHeaders(): boolean {
+  const value = process.env.TRUST_PROXY_HEADERS;
+  return value === "1" || value?.toLowerCase() === "true";
+}
+
 export function clientIp(request: Request): string {
+  // Proxy headers are client-controlled unless a trusted reverse proxy is known
+  // to overwrite them. Fail closed to a single stable key otherwise.
+  if (!trustProxyHeaders()) return "local";
   const realIp = request.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
   const forwarded = request.headers.get("x-forwarded-for");

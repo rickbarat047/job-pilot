@@ -25,6 +25,11 @@ export class AuthError extends Error {
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "jobpilot_session";
 const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS || 30);
 
+// Fixed dummy scrypt hash (public, not a credential) with the same parameters as
+// real password hashes. Verifying it for unknown/deleted users keeps the timing
+// of a failed login comparable to one with an existing account.
+const DUMMY_PASSWORD_HASH = "scrypt$00000000000000000000000000000000$63f78e046070912c4fe830681fc807de31c239bacb58a14f2e0b33e85824db537bb6e2eaf473185e76b3cc2e8b5930e88b041cf6078a298eb05ae2ae81fee3ee";
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -70,13 +75,23 @@ export async function authenticate(email: string, password: string): Promise<Ses
     "SELECT id, email, name, password_hash, created_at, deleted_at FROM users WHERE email = ?",
     [normalizeEmail(email)],
   );
-  if (!user || user.deleted_at) return null;
+  if (!user || user.deleted_at) {
+    await verifyPassword(password, DUMMY_PASSWORD_HASH);
+    return null;
+  }
   const ok = await verifyPassword(password, user.password_hash);
   if (!ok) return null;
   return { id: user.id, email: user.email, name: user.name, createdAt: user.created_at };
 }
 
 export async function createSession(userId: string): Promise<void> {
+  const jar = await cookies();
+  const existingToken = jar.get(COOKIE_NAME)?.value;
+  // Prevent session fixation: a token already held by the caller must stop
+  // being valid before a fresh one is issued.
+  if (existingToken) {
+    await run("DELETE FROM sessions WHERE token_hash = ?", [hashToken(existingToken)]);
+  }
   const token = randomBytes(32).toString("hex");
   const tokenHash = hashToken(token);
   const now = new Date();
@@ -86,7 +101,6 @@ export async function createSession(userId: string): Promise<void> {
   ]);
   // Clean up expired sessions lazily — don't block the login response.
   void run("DELETE FROM sessions WHERE expires_at <= ?", [now.toISOString()]).catch(() => {});
-  const jar = await cookies();
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",

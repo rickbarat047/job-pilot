@@ -65,7 +65,9 @@ async function api(path, { method = "GET", body, token = true } = {}) {
 }
 
 async function heartbeat(status = "online", meta = {}) {
-  const body = buildHeartbeatBody(status, meta, WORKER_TOKEN);
+  // Authentication is header-only (api() attaches x-worker-token); the token
+  // must never appear in the heartbeat JSON body.
+  const body = buildHeartbeatBody(status, meta);
   try {
     await api("/api/automation/worker", { method: "POST", body });
   } catch (err) {

@@ -32,20 +32,20 @@ describe("browser worker - env validation", () => {
 });
 
 describe("browser worker - heartbeat payload", () => {
-  it("sends status as a top-level property for online", () => {
-    const body = buildHeartbeatBody("online", { worker: "playwright" }, "secret") as any;
+  it("sends status as a top-level property for online, with no token in the body", () => {
+    const body = buildHeartbeatBody("online", { worker: "playwright" }) as any;
     expect(body.status).toBe("online");
     expect(body.meta).toEqual({ worker: "playwright" });
-    expect(body.token).toBe("secret");
+    expect(body).not.toHaveProperty("token");
     expect(body.meta.status).toBeUndefined();
   });
   it("sends offline status as a top-level property, not nested in meta", () => {
-    const body = buildHeartbeatBody("offline", { worker: "playwright", status: "online" }, "secret") as any;
+    const body = buildHeartbeatBody("offline", { worker: "playwright", status: "online" }) as any;
     expect(body.status).toBe("offline");
     expect(body.meta.status).toBeUndefined();
   });
   it("throws on invalid status", () => {
-    expect(() => buildHeartbeatBody("bogus", {}, "secret")).toThrow(/Invalid worker status/);
+    expect(() => buildHeartbeatBody("bogus")).toThrow(/Invalid worker status/);
   });
 });
 

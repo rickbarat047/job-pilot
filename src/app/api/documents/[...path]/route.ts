@@ -18,8 +18,8 @@ export async function GET(_request: Request, context: { params: Promise<{ path: 
     const ext = path.extname(relative).toLowerCase();
     const contentType = ext === ".pdf" ? "application/pdf" : ext === ".docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/octet-stream";
     const safeName = path.basename(relative).replace(/[\r\n"]/g, "");
-    return new NextResponse(new Uint8Array(buffer), { headers: { "content-type": contentType, "content-disposition": `inline; filename="${safeName}"` } });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to read document." }, { status: 404 });
+    return new NextResponse(new Uint8Array(buffer), { headers: { "content-type": contentType, "content-disposition": `inline; filename="${safeName}"`, "cache-control": "private, no-store" } });
+  } catch {
+    return NextResponse.json({ error: "Unable to read document." }, { status: 404 });
   }
 }
