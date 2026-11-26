@@ -1,24 +1,33 @@
-app = "jobpilot-browser-worker"
-primary_region = "sin"
+# Fly.io deployment template for the persistent JobPilot browser worker.
+# Operator-owned: create the app, set APP_URL/WORKER_TOKEN with `fly secrets`,
+# then `fly deploy`. No credentials or account identifiers belong in this file.
+
+app = "jobpilot-worker"
+primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile.browser-worker"
 
+# Non-secret runtime defaults. ONE_SHOT=0 keeps the worker alive between tasks.
 [env]
-  HEADLESS = "true"
-  POLL_INTERVAL_MS = "5000"
+  HEADLESS = "1"
+  ONE_SHOT = "0"
+  POLL_INTERVAL_MS = "1000"
   HEARTBEAT_INTERVAL_MS = "20000"
+  BROWSER_TIMEOUT_MS = "120000"
 
-# Secrets (set via `fly secrets set`):
-#   APP_URL=https://jobpilot-ai-sand.vercel.app
-#   WORKER_TOKEN=<vercel WORKER_TOKEN value>
-#   BROWSER_TIMEOUT_MS=120000
-
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "1gb"
+[vm]
   cpu_kind = "shared"
   cpus = 1
+  memory_mb = 1024
 
-[processes]
-  app = "node browser-worker.mjs"
+[restart]
+  policy = "on-failure"
+  max_retries = 10
+
+kill_signal = "SIGTERM"
+kill_timeout = 30
+
+# No [[services]]: this is a background worker, not an HTTP service.
+# Do not configure scale-to-zero/autostop; the heartbeat lease depends on a
+# continuously running process.

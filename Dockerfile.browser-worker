@@ -1,17 +1,35 @@
-# Browser worker image: runs the Playwright-based auto-apply worker.
+# Persistent browser worker image for JobPilot AI.
+#
 # Build: docker build -f Dockerfile.browser-worker -t jobpilot-browser-worker .
-# Run:   docker run -e APP_URL=... -e WORKER_TOKEN=... jobpilot-browser-worker
+# Run:   docker run -d --restart unless-stopped \
+#          -e APP_URL=https://your-app.example \
+#          -e WORKER_TOKEN=<value from the app environment> \
+#          jobpilot-browser-worker
+#
+# The base image ships Chromium and its system dependencies. Only the Playwright
+# JS package needs installing; no application source or database credentials are
+# copied into this image.
 FROM mcr.microsoft.com/playwright:v1.49.0-noble
 
 WORKDIR /app
-ENV NODE_ENV=production
-ENV HEADLESS=true
+ENV NODE_ENV=production \
+    HEADLESS=true \
+    POLL_INTERVAL_MS=5000 \
+    HEARTBEAT_INTERVAL_MS=15000
 
-# Install the Playwright JS library (the base image ships the browser binaries;
-# the npm package must be installed explicitly).
+# Install the Playwright JS library (the base image ships the browser binaries).
 COPY package.json ./package.json
-RUN npm install playwright@1.49.0 --no-save --omit=dev
+RUN npm install playwright@1.49.0 --no-save --omit=dev && chown -R pwuser:pwuser /app
 
-COPY scripts/browser-worker.mjs ./browser-worker.mjs
+# The persistent entrypoint and its side-effect-free shared helpers.
+COPY --chown=pwuser:pwuser scripts/browser-worker-lib.mjs ./browser-worker-lib.mjs
+COPY --chown=pwuser:pwuser scripts/browser-worker.mjs ./browser-worker.mjs
+COPY --chown=pwuser:pwuser scripts/persistent-worker.mjs ./persistent-worker.mjs
 
-CMD ["node", "browser-worker.mjs"]
+USER pwuser
+
+# The worker drains the current task, reports an honest outcome, and posts a
+# single offline heartbeat before exiting. SIGKILL would skip all of that.
+STOPSIGNAL SIGTERM
+
+CMD ["node", "persistent-worker.mjs"]
