@@ -5,14 +5,36 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  health:
+  check:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
-      - name: Check /api/health
+      - name: Check /api/health status
+        env:
+          HEALTH_URL: ${{ secrets.APP_URL }}
         run: |
-          status=$(curl -s -o /tmp/body -w "%{http_code}" "${{ secrets.APP_URL }}/api/health")
-          echo "status=$status"
-          cat /tmp/body
-          if [ "$status" != "200" ]; then exit 1; fi
+          set -euo pipefail
+          if [ -z "${HEALTH_URL:-}" ]; then
+            echo "APP_URL secret is not configured."
+            exit 1
+          fi
+          body="$(curl -fsS --max-time 20 "${HEALTH_URL}/api/health")"
+          echo "Health response: ${body}"
+          status="$(printf '%s' "$body" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write(String(j.status||""))}catch{process.stdout.write("")}})')"
+          if [ -z "$status" ]; then
+            echo "Health response was not valid JSON with a status field."
+            exit 1
+          fi
+          if [ "$status" = "degraded" ] || [ "$status" = "error" ]; then
+            echo "Health status is ${status}; failing the check."
+            exit 1
+          fi
+          if [ "$status" != "ok" ]; then
+            echo "Unknown health status: ${status}"
+            exit 1
+          fi
+          echo "Health status is ok."

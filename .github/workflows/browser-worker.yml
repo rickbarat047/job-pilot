@@ -2,11 +2,12 @@ name: Browser worker
 
 on:
   schedule:
-    # Every 10 minutes. Public repos get unlimited Actions minutes.
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
-# Avoid overlapping runs (a long browser task could exceed the interval).
+permissions:
+  contents: read
+
 concurrency:
   group: browser-worker
   cancel-in-progress: false
@@ -21,27 +22,22 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install Playwright
-        run: |
-          npm install playwright@1.49.0
-          npx playwright install chromium --with-deps
+      - name: Install dependencies from the committed lockfile
+        run: npm ci
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-1.49.0
-      - name: Run browser worker (one task)
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright browsers matching the lockfile
+        run: npx playwright install chromium --with-deps
+      - name: Run browser worker
         env:
           APP_URL: ${{ secrets.APP_URL }}
           WORKER_TOKEN: ${{ secrets.WORKER_TOKEN }}
           HEADLESS: "true"
           ONE_SHOT: "1"
           POLL_INTERVAL_MS: "1000"
-          # Worker availability lease: the schedule is every 10 minutes and a
-          # run may take up to 10 minutes (timeout-minutes above), so a healthy
-          # heartbeat plus grace justifies 30 minutes = 3x the interval. After
-          # that a heartbeat is stale; one-shot runs never post offline, so a
-          # crashed/throttled run stops looking online on its own. Keep this in
-          # sync with WORKER_ONLINE_WINDOW_MS on the app.
+          # Scheduled one-shot worker: 10m cron + 10m job timeout + 10m grace.
           WORKER_ONLINE_WINDOW_MS: "1800000"
         run: node scripts/browser-worker.mjs

@@ -482,7 +482,7 @@ async function processOne() {
 
     let claimed;
     try {
-      claimed = await api("/api/automation/worker/tasks/claim", { method: "POST", body: { token: WORKER_TOKEN } });
+      claimed = await api("/api/automation/worker/tasks/claim", { method: "POST", body: {} });
     } catch (err) {
       console.error("claim failed", err instanceof Error ? err.message : err);
       if (isAuthFailure(err)) {
