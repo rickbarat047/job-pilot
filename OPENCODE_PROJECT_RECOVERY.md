@@ -204,3 +204,21 @@ JP-002 → JP-003 → JP-007, then E2E verification with a dedicated test accoun
    required before production backups can succeed**. Final local verification after all
    changes: `npm test` 25 files / 168 passed / 3 skipped; typecheck PASS; lint 0 errors /
    26 pre-existing warnings; `npm run build` exit 0.
+ - 2026-11-26 — JP-016 (E2E discovery → real browser application). Added a genuine end-to-end
+   harness under `scripts/e2e/` plus an env-gated fixture source adapter
+   (`src/lib/sources/fixture.ts`, disabled by default), a localhost-only AI/fake-employer
+   stub (`scripts/e2e/stub-server.mjs`), fixtures and a real Playwright browser-worker run.
+   A disposable local PostgreSQL 17.12 cluster (`127.0.0.1:55432`, `jobpilot_e2e`, migrations
+   0001 + 0003) was used; **no production data, credentials, sites, AI keys or emails**.
+   Workflow transitions went through the real HTTP APIs (register, discovery, tailor, approve,
+   heartbeat, submit); only fixture seeding wrote directly to the DB. Final E2E run:
+   **27/27 checks passed**, including real browser submission with explicit confirmation
+   and DB evidence (`state=Applied`, `applied_at`, `browser` method, `application.submitted_browser`
+   event, succeeded task, succeeded discovery run), plus failure cases (401 unauthenticated
+   claim, 400 premature submit, duplicate-result non-idempotency documented, AI fallback
+   after stub shutdown). Known defects observed but not silently fixed: duplicate worker
+   results are non-idempotent, and the worker's "assumed success" seam still exists.
+   Added `npm run test:e2e` and `.github/workflows/e2e.yml` (postgres:17, Playwright, weekly
+   + manual trigger). Final verification: `npm test` 26 files / 172 passed / 3 skipped;
+   typecheck PASS; lint 0 errors / 26 pre-existing warnings; build PASS; E2E 27/27.
+   Documentation: `docs/E2E_DISCOVERY_TO_APPLICATION.md`. No commit, push or deploy made.

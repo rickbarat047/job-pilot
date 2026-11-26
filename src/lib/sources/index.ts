@@ -6,6 +6,7 @@ import { smartRecruitersAdapter } from "./smartrecruiters";
 import { remoteBoardsAdapter } from "./remote-boards";
 import { unavailableAdapters } from "./unavailable";
 import { manualAdapter } from "./manual";
+import { fixtureAdapter } from "./fixture";
 
 export const SOURCE_ADAPTERS: JobSourceAdapter[] = [
   greenhouseAdapter,
@@ -14,6 +15,7 @@ export const SOURCE_ADAPTERS: JobSourceAdapter[] = [
   smartRecruitersAdapter,
   remoteBoardsAdapter,
   manualAdapter,
+  fixtureAdapter,
   ...unavailableAdapters,
 ];
 
@@ -35,3 +37,4 @@ export * from "./smartrecruiters";
 export * from "./remote-boards";
 export * from "./unavailable";
 export * from "./manual";
+export * from "./fixture";

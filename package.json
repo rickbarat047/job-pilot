@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint src",
     "test": "vitest run",
+    "test:e2e": "node scripts/e2e/run.mjs",
     "test:watch": "vitest",
     "db:seed": "curl -s -X POST http://localhost:3000/api/dev/seed",
     "worker": "node scripts/scheduler.mjs",
@@ -59,6 +60,7 @@
     "@types/react-dom": "^19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.6",
+    "playwright": "^1.49.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^5.0.5"

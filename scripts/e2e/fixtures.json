@@ -1,0 +1,26 @@
+[
+  {
+    "sourceJobId": "e2e-1",
+    "title": "Software Engineer",
+    "companyName": "Fixture Technologies",
+    "descriptionText": "Work with Python, React and SQL. Build reliable web applications in Bengaluru. Full-time role.",
+    "location": "Bengaluru, India",
+    "applicationUrl": "http://127.0.0.1:4599/jobs/e2e-1"
+  },
+  {
+    "sourceJobId": "e2e-2",
+    "title": "Backend Engineer",
+    "companyName": "Fixture Systems",
+    "descriptionText": "Work with Python and SQL on backend services in Bengaluru. Full-time role.",
+    "location": "Bengaluru, India",
+    "applicationUrl": "http://127.0.0.1:4599/jobs/e2e-2"
+  },
+  {
+    "sourceJobId": "e2e-3",
+    "title": "Platform Engineer",
+    "companyName": "Fixture Labs",
+    "descriptionText": "Work with Python, React and SQL on developer platforms in Bengaluru. Full-time role.",
+    "location": "Bengaluru, India",
+    "applicationUrl": "http://127.0.0.1:4599/jobs/e2e-3"
+  }
+]

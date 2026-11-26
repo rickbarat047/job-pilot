@@ -1,0 +1,58 @@
+name: E2E Discovery to Application
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-discovery-application
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: e2e-only
+          POSTGRES_DB: jobpilot_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jobpilot_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: e2e-only
+      PGDATABASE: jobpilot_e2e
+      E2E_DB_PORT: 5432
+      E2E_DB_USER: postgres
+      E2E_DB_PASSWORD: e2e-only
+      E2E_DB_NAME: jobpilot_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium chromium-headless-shell
+      - name: Apply schema migrations to the disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_schema.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0003_push_subscriptions.sql
+      - name: Run discovery → application E2E
+        run: node scripts/e2e/run.mjs
