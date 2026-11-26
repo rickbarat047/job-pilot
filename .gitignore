@@ -54,3 +54,17 @@ coverage/
 
 # supabase CLI local state
 supabase/.temp/
+
+# local Windows worker (DPAPI-encrypted config, logs, PID/stop sentinels)
+# The scripts keep these outside the repo by default; ignore any accidental copies.
+.worker-local/
+worker-local/
+worker.env
+worker.env.enc
+worker.pid
+stop.request
+scripts/windows/*.env
+scripts/windows/*.env.*
+!scripts/windows/worker.env.example
+scripts/windows/logs/
+

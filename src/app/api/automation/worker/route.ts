@@ -11,12 +11,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const snapshot = await workerStatusSnapshot();
   return NextResponse.json({
-    status: snapshot.status,
+    status: snapshot.online ? snapshot.status : "offline",
     lastHeartbeat: snapshot.lastHeartbeat,
     online: snapshot.online,
     meta: snapshot.meta,
     recentlySeen: snapshot.recentlySeen,
-    processing: snapshot.processing,
+    processing: snapshot.online && snapshot.processing,
     leaseExpiresAt: snapshot.leaseExpiresAt,
   });
 }

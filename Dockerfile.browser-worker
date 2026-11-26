@@ -9,7 +9,7 @@
 # The base image ships Chromium and its system dependencies. Only the Playwright
 # JS package needs installing; no application source or database credentials are
 # copied into this image.
-FROM mcr.microsoft.com/playwright:v1.49.0-noble
+FROM mcr.microsoft.com/playwright:v1.65.1-noble
 
 WORKDIR /app
 ENV NODE_ENV=production \
@@ -19,7 +19,7 @@ ENV NODE_ENV=production \
 
 # Install the Playwright JS library (the base image ships the browser binaries).
 COPY package.json ./package.json
-RUN npm install playwright@1.49.0 --no-save --omit=dev && chown -R pwuser:pwuser /app
+RUN npm install playwright@1.65.1 --no-save --omit=dev && chown -R pwuser:pwuser /app
 
 # The persistent entrypoint and its side-effect-free shared helpers.
 COPY --chown=pwuser:pwuser scripts/browser-worker-lib.mjs ./browser-worker-lib.mjs
