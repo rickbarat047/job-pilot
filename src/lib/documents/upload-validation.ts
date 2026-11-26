@@ -1,6 +1,8 @@
 // Allowlist validation for CV/document uploads. Never trust client MIME type or
 // filename extension alone: both must agree with the file's magic bytes.
 
+import { validateDocxArchive } from "./docx-zip";
+
 export interface CvUploadInput {
   name: string;
   type: string;
@@ -51,6 +53,15 @@ export function validateCvUpload({ name, type, size, bytes }: CvUploadInput): Cv
   for (let index = 0; index < rule.magic.length; index += 1) {
     if (bytes[index] !== rule.magic[index]) {
       return { ok: false, error: "The file content does not match its extension." };
+    }
+  }
+
+  // A DOCX is a ZIP archive; the 4-byte magic alone proves nothing. Parse and
+  // validate its OOXML structure before accepting the upload.
+  if (extension === "docx") {
+    const archiveError = validateDocxArchive(bytes);
+    if (archiveError) {
+      return { ok: false, error: archiveError };
     }
   }
 

@@ -16,16 +16,16 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Authenticate the Playwright worker. The token can arrive as
- * `x-worker-token`, `Authorization: Bearer <token>`, or `token` in the body.
+ * Authenticate the Playwright worker. The token must arrive in a header:
+ * `x-worker-token` or `Authorization: Bearer <token>`. Body tokens are rejected.
  */
-export function verifyWorkerToken(request: Request, bodyToken?: unknown): boolean {
+export function verifyWorkerToken(request: Request): boolean {
   const expected = configuredWorkerToken();
   if (!expected) return false;
   const header = request.headers.get("x-worker-token")
     ?? request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
     ?? "";
-  const provided = header || (typeof bodyToken === "string" ? bodyToken : "");
+  const provided = header;
   if (!provided) return false;
   return safeEqual(provided, expected);
 }

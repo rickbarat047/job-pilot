@@ -9,7 +9,7 @@ const ALLOWED: WorkerTaskStatus[] = ["applied", "manual_required", "failed"];
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const body = await request.json().catch(() => ({}));
-  if (!verifyWorkerToken(request, body?.token)) {
+  if (!verifyWorkerToken(request)) {
     return NextResponse.json({ error: "Invalid worker token." }, { status: 401 });
   }
   const status = body?.status as WorkerTaskStatus;

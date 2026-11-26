@@ -519,7 +519,6 @@ async function processOne() {
       await api(`/api/automation/worker/tasks/${encodeURIComponent(taskId)}/result`, {
         method: "POST",
         body: {
-          token: WORKER_TOKEN,
           status: result.status,
           message: result.message,
           finalUrl: result.finalUrl,

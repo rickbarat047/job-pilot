@@ -35,9 +35,9 @@ describe("worker auth", () => {
     expect(verifyWorkerToken(request)).toBe(true);
   });
 
-  it("accepts a token in the request body", () => {
+  it("rejects a token in the request body", () => {
     const request = makeRequest({}, { token: "super-secret-token-123" });
-    expect(verifyWorkerToken(request, "super-secret-token-123")).toBe(true);
+    expect(verifyWorkerToken(request)).toBe(false);
   });
 
   it("rejects a missing token", () => {

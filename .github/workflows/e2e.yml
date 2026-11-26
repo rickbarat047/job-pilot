@@ -58,6 +58,32 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_schema.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0003_push_subscriptions.sql
+      - name: Validate 0005 RLS hardening on the disposable database
+        env:
+          RLS_TEST_DATABASE_URL: "postgres://${{ env.E2E_DB_USER }}:${{ env.E2E_DB_PASSWORD }}@127.0.0.1:${{ env.E2E_DB_PORT }}/${{ env.E2E_DB_NAME }}?sslmode=disable"
+        run: |
+          # company_reviews is created by app bootstrap (src/lib/schema.ts), not
+          # by a versioned migration. Create it here so 0005 can be validated in
+          # isolation. The probe runs in one transaction that is always rolled
+          # back, leaving the E2E database exactly as it was found.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE IF NOT EXISTS company_reviews (
+            id TEXT PRIMARY KEY,
+            company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            title TEXT,
+            comment TEXT,
+            pros TEXT,
+            cons TEXT,
+            would_recommend INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(user_id, company_id)
+          );
+          CREATE INDEX IF NOT EXISTS idx_company_reviews_company ON company_reviews(company_id);
+          SQL
+          npx vitest run src/lib/rls-validation.test.ts
       - name: Run discovery → application E2E
         run: node scripts/e2e/run.mjs
       - name: Upload E2E failure evidence

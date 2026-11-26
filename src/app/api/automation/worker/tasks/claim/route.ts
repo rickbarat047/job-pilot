@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  if (!verifyWorkerToken(request, body?.token)) {
+  if (!verifyWorkerToken(request)) {
     return NextResponse.json({ error: "Invalid worker token." }, { status: 401 });
   }
 

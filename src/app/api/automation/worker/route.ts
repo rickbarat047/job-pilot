@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    if (!verifyWorkerToken(request, body?.token)) {
+    if (!verifyWorkerToken(request)) {
       return NextResponse.json({ error: "Invalid worker token." }, { status: 401 });
     }
     await updateWorkerHeartbeat(body.status === "offline" ? "offline" : "online", body.meta ?? {});
