@@ -13,6 +13,7 @@
     "lint": "eslint src",
     "test": "vitest run",
     "test:e2e": "node scripts/e2e/run.mjs",
+    "test:staging": "node scripts/staging/run-local-staging.mjs",
     "test:watch": "vitest",
     "db:seed": "curl -s -X POST http://localhost:3000/api/dev/seed",
     "worker": "node scripts/scheduler.mjs",

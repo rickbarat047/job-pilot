@@ -242,3 +242,22 @@ pm ci + cache key hashFiles('package-lock.json'), removed claim body token, and 
 - 2026-11-27 — JP-022 (free-first native Windows persistent worker). Strict ?0 strategy: no Fly/Railway/paid hosting/WSL/Docker Desktop/Vercel changes. Added native Windows Task Scheduler scripts (`scripts/windows/install-worker.ps1`, `start-worker.ps1`, `stop-worker.ps1`, `uninstall-worker.ps1`, `worker.env.example`) and `docs/WINDOWS_WORKER_SETUP.md`; scripts are dry-run/inert — nothing was registered or started on this PC. Local secrets file is git-excluded and ACL'd, never printed. Fixed `src/app/api/automation/worker/route.ts` GET so textual status/processing derive from the lease (expired lease now reports offline, not stale "online"); `src/lib/worker-status-route.test.ts` 4/4 GREEN. Added `docs/ORACLE_ALWAYS_FREE_RESEARCH.md` (research only, no provisioning; 2 OCPU/12GB ARM A1.Flex, ARM capacity/PayGo risks) and aligned `Dockerfile.browser-worker` to Playwright 1.65.1 (optional path only). Full verification: npm ci 0 (0 vulns), npm audit 0, typecheck 0, lint 0 errors/26 warnings, npm test 42 files 306 passed/8 skipped, npm run test:e2e 30/30, build 0. No production DB/secrets/migrations/real applications; Task Scheduler scripts intentionally not registered. Operator must run install script manually when approved.
 
 - 2026-11-27 — JP-023 isolated local staging: added `src/lib/staging-guard.ts` (6 tests), `scripts/staging/run-local-staging.mjs` and `docs/LOCAL_STAGING_WORKFLOW.md`. Dedicated disposable local Postgres DB `jobpilot_staging`; fixture source + fake employer; staging-only worker token; persistent worker `MAX_TASKS=1` proof 11/11 through real local API/DB (Applied, one event, task succeeded, lease/health offline after shutdown). Full verification: npm ci/audit/typecheck/lint/test/test:e2e/build all exit 0 (312 passed/8 skipped; E2E 30/30). No production access, no Task Scheduler registration, no push/deploy.
+
+- 2026-11-27 â€” JP-024: hardened the JP-023 local staging runner before operator use.
+  Root causes fixed: personal hard-coded PostgreSQL path; runner used its own
+  partial local-only check instead of the authoritative staging guard; child
+  processes inherited the full environment (possible production credentials);
+  destructive TRUNCATE lacked exact DB-name/host verification; worker exit code
+  was checked before the process exited. Implemented portable psql/createdb/
+  pg_isready discovery via PATH or PG_BIN, authoritative `assertStagingConfig()`
+  plus allowlisted `restrictedStagingEnv()`, fail-safe database checks (exact
+  `jobpilot_staging` name, localhost host after CIDR strip, local DATABASE_URL),
+  wait-for-worker-exit, SIGINT/SIGTERM cleanup and guaranteed temp-storage removal.
+  Staging proof 15/15 PASS locally (config guard, PG discovery, exact DB/host
+  checks, seed, fake employer, app health degraded with worker offline, worker
+  online heartbeat, Applied state, one submit event, task succeeded, clean exit,
+  lease expiry offline). Added `npm run test:staging` and a `workflow_dispatch`
+  staging-proof CI workflow (NOT yet run, so no CI claim). Full verification:
+  npm ci 0 (0 vulns), audit 0, typecheck 0, lint 0 errors/26 warnings, npm test
+  43 files 383 passed/8 skipped, test:e2e 30/30, build 0. Free-only (â‚¹0).
+  No commit, push, deploy, production access or Task Scheduler registration.
